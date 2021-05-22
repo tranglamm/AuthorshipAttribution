@@ -1,0 +1,13 @@
+{
+    "emb_dim": 300,
+    "num_classes": 11,
+    "vocab_size": 39988,
+    "max_length": 50,
+    "nb_filters": 512,
+    "filter_sizes": [3],
+    "dropout_val": 0.2,
+    "lr":1e-3,
+    "dense_layer_size": 100,
+    "num_epochs": 1,
+    "batch_size": 800
+}

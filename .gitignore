@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+aa/pretrained_emb
+.vscode
+.DS_Store
