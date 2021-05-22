@@ -21,6 +21,7 @@ def read_csv_file(data_path,clean_text:bool=True):
         df[texts]=df[texts].apply(lambda x:str(x)).apply(clean_tweet)
     texts = df[texts].to_list()
     labels=df[labels].to_list()
+    texts,labels=split_sent(texts,labels)
     return texts, labels 
 
 def load_json(file_json):
@@ -57,6 +58,23 @@ def load_dict_labels():
             dict_labels = pickle.load(handle)
     else: 
         print("Please train your model before running test ...")
+
+def split_sent(texts, labels):
+    config=load_json('aa/config/model_config.json')
+    max_length=config['max_length']
+    data = (np.zeros((len(texts),max_length ))).astype('int32')
+    new_texts, new_labels = [],[]
+    for text,label in zip(texts,labels):
+        tokens=[tok for tok in text.split()]
+        if len(tokens)>max_length:
+            text=[tokens[x:x+max_length] for x in range(0, len(tokens), max_length)]
+            auteur=[auteur]*len(text)
+            new_texts.extend([" ".join(sub_text) for sub_text in text])
+            new_labels.extend(auteur)
+        else:
+            new_texts.extend([text])
+            new_labels.extend([label])
+    return new_texts, new_labels
 
 def clean_tweet(texte):
     texte=re.sub(r'&gt;|&amp;|"','',texte)

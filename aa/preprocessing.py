@@ -65,7 +65,7 @@ class PrepareData():
             if not all(isinstance(x, int) for x in labels):
                 y_train, y_val = transform_labels(y_train,y_val)
             labels_encoded = np.concatenate((y_train,y_val))
-
+        
             save_dict_labels(labels,labels_encoded)
             self.dict_labels = inverse_labels(labels_encoded,labels)
             self.texts = texts
@@ -134,7 +134,8 @@ class Preprocessing():
         #Prepare data : get data 
         
         self.data = PrepareData (params)
-        self.texts = self.data.get_texts()
+        texts = self.data.get_texts()
+        
         self.params=params    
         #self.tokenizer=Tokenizer(**kwargs)
         self.tokenizer= Tokenizer()
