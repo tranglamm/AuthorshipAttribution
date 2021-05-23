@@ -128,6 +128,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-aa/pretrained_emb
+aa/ressources/pretrained_emb
+aa/output_models
 .vscode
 .DS_Store

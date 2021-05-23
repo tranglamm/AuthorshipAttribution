@@ -1,8 +1,0 @@
-{
-    "vector_size": 128,
-    "window": 10,
-    "min_count": 0,
-    "workers": 8,
-    "sg": 1,
-    "negative": 5
-}

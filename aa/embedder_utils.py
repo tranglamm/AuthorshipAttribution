@@ -1,17 +1,26 @@
+"""
+
+Download pre-trained common-crawl vectors from fastText's website
+https://fasttext.cc/docs/en/crawl-vectors.html 
+
+Save it to aa/ressources/pretraines_emb
+
+
+@author: Trang Lam - github.com/tranglamm
+"""
+
 from logging import getLogger
 import io
 import numpy as np
-#import torch
 import os
 import numpy as np
 import sys
 import shutil
 import gzip
 
-#try:
+
 from urllib.request import urlopen
-#except ImportError:
-    #from urllib2 import urlopen
+
 
 logger = getLogger()
 
@@ -83,7 +92,7 @@ def _download_gz_model(gz_file_name, if_exists):
     url = "https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/%s" % gz_file_name
 
     #pretrained_dir= the directory which stores fasttext embeddings = pretrained_emb
-    pretrained_dir="aa/pretrained_emb" 
+    pretrained_dir="aa/ressources/pretrained_emb" 
     gz_file_name=os.path.join(pretrained_dir,gz_file_name)
     _download_file(url, gz_file_name)
 
@@ -101,8 +110,7 @@ def download_model(lang_id, format_vec, if_exists='strict' ,dimension=None):
 
     file_name = "cc.%s.300.%s" % (lang_id,format_vec)
     gz_file_name = "%s.gz" % file_name
-    pretrained_dir="aa/pretrained_emb" 
-    gz_file_name=os.path.join(pretrained_dir,gz_file_name)
+    pretrained_dir="aa/ressources/pretrained_emb" 
     file_name=os.path.join(pretrained_dir,file_name)
 
     if os.path.isfile(file_name):
@@ -115,26 +123,13 @@ def download_model(lang_id, format_vec, if_exists='strict' ,dimension=None):
             pass
 
     if _download_gz_model(gz_file_name, if_exists):
+        gz_file_name=os.path.join(pretrained_dir,gz_file_name)
         with gzip.open(gz_file_name, 'rb') as f:
             with open(file_name, 'wb') as f_out:
                 shutil.copyfileobj(f, f_out)
 
     return file_name
 
-"""
-
-def load_fasttext_model(path):
-    '''
-    Load a binarized fastText model.
-    '''
-    try:
-        import fasttext
-    except ImportError:
-        raise Exception("Unable to import fastText. Please install fastText for Python: "
-                        "https://github.com/facebookresearch/fastText")
-    return fasttext.load_model(path)
-
-"""
 
 
 
