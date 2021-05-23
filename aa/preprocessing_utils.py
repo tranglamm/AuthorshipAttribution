@@ -9,16 +9,17 @@ from sklearn.model_selection import train_test_split
 import pickle 
 import json
 
-def read_csv_file(data_path,clean_text:bool=True):
+def read_csv_file(data_path,clean_text:bool=False):
     if Path(data_path).exists():
-        df=pd.read_csv(data_path,sep="\t",encoding="utf-8")
+        df=pd.read_csv(data_path,sep="\t",encoding="utf-8",header=None)
     else: 
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), data_path)
     texts=df.columns[1]
     labels=df.columns[0]
     df = df.dropna()
     if clean_text:
-        df[texts]=df[texts].apply(lambda x:str(x)).apply(clean_tweet)
+        #df[texts]=df[texts].apply(lambda x:str(x)).apply(clean_tweet)
+        df[texts]=df[texts].apply(lambda x:str(x)).apply(clean_campagne)
     texts = df[texts].to_list()
     labels=df[labels].to_list()
     texts,labels=split_sent(texts,labels)
@@ -45,6 +46,16 @@ def update_emb_config(dict_config):
         file.seek(0)
         json.dump(data, file,indent=4)
 
+def save_word_index(word_index):
+    path= "aa/ressources/word_index.pickle"
+    with open(path, 'wb') as handle:
+        pickle.dump(word_index, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+def load_word_index():
+    path= "aa/ressources/word_index.pickle"
+    with open(path, 'rb') as handle:
+        word_index = pickle.load(handle)
+    return word_index
 def save_dict_labels(labels,labels_encoded):
     dict_labels=dict(zip(labels, labels_encoded))
     path= "aa/ressources/dict_labels.pickle"
@@ -68,9 +79,9 @@ def split_sent(texts, labels):
         tokens=[tok for tok in text.split()]
         if len(tokens)>max_length:
             text=[tokens[x:x+max_length] for x in range(0, len(tokens), max_length)]
-            auteur=[auteur]*len(text)
+            label=[label]*len(text)
             new_texts.extend([" ".join(sub_text) for sub_text in text])
-            new_labels.extend(auteur)
+            new_labels.extend(label)
         else:
             new_texts.extend([text])
             new_labels.extend([label])
@@ -112,7 +123,7 @@ def transform_labels(y_train, y_val):
     return Y_train, Y_val
 
 def split_data(texts,labels):
-    x_train, x_val, y_train, y_val = train_test_split(texts,labels, test_size=0.2,random_state=42)
+    x_train, x_val, y_train, y_val = train_test_split(texts,labels, test_size=0.1,random_state=42)
     X=[x_train, x_val]
     Y=[y_train, y_val]
     return x_train, x_val, y_train, y_val

@@ -1,4 +1,4 @@
-from aa import CNN, config
+from aa import CNN
 from aa.config_utils import *
 from aa import preprocessing
 import tensorflow
@@ -14,7 +14,7 @@ import numpy as np
 from aa.preprocessing import *
 from aa.embedder import *
 import logging
-logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 def get_parser():
     """
@@ -34,6 +34,9 @@ def get_parser():
     parser.add_argument("--lg", type=str, default="",
                         help="Choose a language to download FastText pretrained Word Embeddings")
 
+    parser.add_argument("--reduce_dim", type=int, default="300",
+                        help="Reduce dimension of FastText pretrained Word Embeddings")
+
     parser.add_argument("--custom_emb", type=str, default="w2v",
                         help="You can choose between w2v or ft to train your own embeddings")
     """
@@ -51,14 +54,17 @@ def main(params):
     preprocessing=Preprocessing(params)
     x_train, y_train = preprocessing.get_training_data()
     x_val, y_val = preprocessing.get_validation_data()
-    texts = preprocessing.texts
-
+    texts = preprocessing.get_texts()
+    print(preprocessing.get_vocab_size())
+    print(preprocessing.get_vocab())
+    print(x_train.shape)
+    print(x_val.shape)
     #Load embedding config 
     emb_config = EmbConfig.from_json_file("aa/config/emb_config.json")
     #Load embeddings
     #if have params lg => load pretrained embedding from FastText 
     if params.lg: 
-        load_pretrained_embeddings()
+        load_pretrained_embeddings(params)
         embedding_matrix=preprocessing.prepare_txt_embedding(emb_config)
     elif params.custom_emb: 
         if params.custom_emb=="w2v":
@@ -82,7 +88,8 @@ def main(params):
         model,deconv_model=CnnModel.get_model()
     
         mc=[ModelCheckpoint(output_file, monitor='val_accuracy', verbose=1, save_best_only=True, mode='max'),
-            EarlyStopping(patience=2,monitor="val_accuracy")]
+            #EarlyStopping(patience=2,monitor="val_accuracy")
+            ]
         history=model.fit(x_train, y_train,
                         epochs=model_config.num_epochs,
                         validation_data=(x_val,y_val),

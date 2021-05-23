@@ -90,7 +90,7 @@ def _download_gz_model(gz_file_name, if_exists):
     return True
 
 
-def download_model(lang_id, if_exists='strict', dimension=None):
+def download_model(lang_id, format_vec, if_exists='strict' ,dimension=None):
     """
         Download pre-trained common-crawl vectors from fastText's website
         https://fasttext.cc/docs/en/crawl-vectors.html
@@ -99,7 +99,7 @@ def download_model(lang_id, if_exists='strict', dimension=None):
         raise Exception("Invalid lang id. Please select among %s" %
                         repr(valid_lang_ids))
 
-    file_name = "cc.%s.300.vec" % lang_id
+    file_name = "cc.%s.300.%s" % (lang_id,format_vec)
     gz_file_name = "%s.gz" % file_name
     pretrained_dir="aa/pretrained_emb" 
     gz_file_name=os.path.join(pretrained_dir,gz_file_name)

@@ -1,1 +1,1 @@
-from . import config,cnn
+from . import cnn

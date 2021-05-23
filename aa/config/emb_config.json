@@ -1,5 +1,5 @@
 {
-    "vector_size": 300,
+    "vector_size": 128,
     "window": 10,
     "min_count": 0,
     "workers": 8,

@@ -19,8 +19,11 @@ class Config:
         #Embedding configuration 
         self.model = kwargs.pop("model", "skipgram")
         self.vector_size = kwargs.pop("vector_size", 128)
+        self.window = kwargs.pop("window",10)
+        self.workers = kwargs.pop("workers",8)
+        self.sg = kwargs.pop("sg",1)
         self.alpha = kwargs.pop("alpha", 0.025)
-        self.min_count = kwargs.pop("min_count", 5)
+        self.min_count = kwargs.pop("min_count", 0)
         self.loss = kwargs.pop("loss", "ns")
         self.sample = kwargs.pop("sample", 0.001)
         self.negative = kwargs.pop("negative", 5)

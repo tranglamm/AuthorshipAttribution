@@ -25,8 +25,8 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.utils import to_categorical
 
-#from gensim.models import Word2Vec
-#from gensim.models import KeyedVectors
+from gensim.models import Word2Vec
+from gensim.models import KeyedVectors
 import gzip 
 import shutil
 import json
@@ -89,6 +89,7 @@ class PrepareData():
 
         #Predict only one sentence 
         elif sys.argv[0] == "predict.py":  
+            """
             if params.sentence and params.true_target: 
                 self.sentence=params.sentence
                 true_target=params.true_target
@@ -100,9 +101,11 @@ class PrepareData():
                     print("It seems that the TARGET of your data can not be found in your trained model ... ")
             else: 
                 print("2 arguments ... ") 
+            """
+            if params.txt_file:
+                with open(params.txt_file,"r",encoding="utf-8") as f: 
+                    self.predict_data=[l.strip('\n') for l in f.readlines()]
 
-           
-            
     def get_train_data(self):
         return self.train_data
 
@@ -117,7 +120,7 @@ class PrepareData():
         Dict of labels: {0: label1, 1: label2, ...}
         """
         return self.dict_labels
-    
+    """
     def get_texts(self):
         return self.texts
         #return self.train_data[0]+self.val_data[0]
@@ -125,7 +128,7 @@ class PrepareData():
     def get_labels(self):
         return self.labels
         #return self.train_data[1]+self.val_data[1]
-
+    """
 class Preprocessing():
     def __init__(self, params, 
                 #**kwargs
@@ -134,12 +137,12 @@ class Preprocessing():
         #Prepare data : get data 
         
         self.data = PrepareData (params)
-        texts = self.data.get_texts()
         
         self.params=params    
         #self.tokenizer=Tokenizer(**kwargs)
-        self.tokenizer= Tokenizer()
-        self.tokenizer.fit_on_texts(self.data.get_texts())
+        if sys.argv[0] == "train.py":
+          self.tokenizer= Tokenizer(filters='', lower=False)
+          self.tokenizer.fit_on_texts(self.data.texts)
 
     def get_training_data(self):
         train_data = self.data.get_train_data()
@@ -155,8 +158,26 @@ class Preprocessing():
     
     def get_predict_data(self):
         predict_data = self.data.get_predict_data()
-        x_predict = self.convert_data(predict_data[0])
-        y_predict = self.convert_data(predict_data[1])
+        word_index=load_word_index() 
+        sentences=[]       
+        for data in predict_data: 
+          sentence=[]
+          words=data.split()
+          for word in words: 
+            if word in word_index: 
+              sentence.append(word_index[word])
+            else: 
+              sentence.append(0)
+          sentences.append((sentence))
+        x_predict=np.array([np.array(sentence) for sentence in sentences])
+        config=load_json('aa/config/model_config.json')
+        x_predict = pad_sequences(x_predict, padding='post', maxlen=config['max_length'])
+        #x_predict = self.convert_data(predict_data[0])
+        #y_predict = self.convert_data(predict_data[1])
+        return x_predict 
+
+    def get_texts(self):
+        return self.data.texts  
 
     def get_vocab(self):
         """
@@ -166,7 +187,7 @@ class Preprocessing():
         return self.tokenizer.word_index
 
     def get_vocab_size(self):
-        vocab_size = len(self.tokenizer.word_index) + 1
+        vocab_size = len(self.get_vocab()) + 1
         update_model_config({"vocab_size":vocab_size})
         return vocab_size
 
@@ -183,24 +204,30 @@ class Preprocessing():
         return x 
     
     def convert_label(self,y:List):
-        labels=self.data.get_labels()
+        labels=self.data.labels
         y = to_categorical(y,num_classes=len(set(labels)))
         return y 
 
     def prepare_custom_embedding(self,emb_config):
         logging.info("Create Embedding Matrix")
-        """
-        file_vec="aa/pretrained_emb/word2vec.%s.wordvectors" % emb_config.vector_size
+        #file_vec="aa/pretrained_emb/word2vec_%s.wordvectors" % emb_config.vector_size
+        file_vec="/content/drive/MyDrive/Colab Notebooks/AuthorshipAttribution/AuthorshipAttribution/aa/pretrained_emb/Campagne2017.vec"
         logging.info(f"Create Embedding Matrix from {file_vec}")
-        wv = KeyedVectors.load(file_vec, mmap='r')
+        #wv = KeyedVectors.load(file_vec, nmap='r)
+        wv=KeyedVectors.load_word2vec_format(file_vec, binary=False)
         word_index=self.get_vocab()
+        save_word_index(word_index)
         #embedding_dim=self.config.emb_dim
         embedding_dim=emb_config.vector_size
         vocab_size = self.get_vocab_size() # Adding again 1 because of reserved 0 index
         embedding_matrix = np.zeros((vocab_size, embedding_dim))
         for word, idx in word_index.items():
-            if wv[word] is not None:
-                embedding_matrix[idx] = wv[word]
+          try:
+            word_vec=wv[word]
+          except:
+            pass  
+          else: 
+            embedding_matrix[idx] = word_vec
             '''
             #read first line
             n, d = map(int, file.readline().split())
@@ -212,7 +239,7 @@ class Preprocessing():
                     embedding_matrix[idx] = np.asarray(values[1:], dtype='float32')
             '''
         return embedding_matrix
-        """
+        
     def prepare_txt_embedding(self,emb_config):
         logging.info("Create Embedding Matrix")
         #lang=self.params.lg
@@ -220,6 +247,7 @@ class Preprocessing():
         file_vec="aa/pretrained_emb/cc.%s.300.vec" % lang
         
         word_index=self.get_vocab()
+        save_word_index(word_index)
         #embedding_dim=self.config.emb_dim
         embedding_dim=emb_config.vector_size
         vocab_size = self.get_vocab_size() # Adding again 1 because of reserved 0 index
@@ -234,6 +262,18 @@ class Preprocessing():
                     idx = word_index[word] 
                     embedding_matrix[idx] = np.asarray(values[1:], dtype='float32')
         return embedding_matrix
+    
+    def inverse_data(self, x: List):
+        """
+        Transforms each sequence into a list of text.
+        """
+        x = self.tokenizer.sequences_to_texts(x)
+        return x 
+    def get_word(self,index):
+        word_index = load_word_index() 
+        index_word = {v: k for k, v in word_index.items()}
+        word = index_word[index]
+        return word
     """
     def prepare_bin_embedding(self,file_name):
         #Get vocab= word_index

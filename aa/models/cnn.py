@@ -31,7 +31,7 @@ class CNN:
             conv_array.append(conv)
             maxpool_array.append(maxpool)			
 						
-        deconv = Conv2DTranspose(1, self.config.filter_sizes[0], self.config.emb_dim)(conv_array[0])
+        deconv = Conv2DTranspose(1,(self.config.filter_sizes[0], self.config.emb_dim))(conv_array[0])
         deconv_model = Model(inputs=inputs, outputs=deconv)
         deconv_model.summary()
 
