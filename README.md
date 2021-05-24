@@ -57,7 +57,7 @@ For evaluation/prediction, you can pass either a **sentence** or a **csv** file:
 **---sep** : seperator of your csv file (by default '\t') 
 
 **---deconv** :  bool. (Whether you want to use the deconvolution technique to highlight the most important patterns which contribute to the decision of your model) 
-![Alt text](AuthorshipAttribution/images_ReadMe/Deconv.png "deconv")
+![image](images_ReadMe/Deconv.png)
 
 
 **---output_csv** :  your output csv file if you want to output a csv file containing 4 columns Text, True Label, Predict Label, Predictions Score. 
