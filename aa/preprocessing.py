@@ -11,6 +11,7 @@ import sys
 from pickle import LIST
 
 from numpy.lib.npyio import load
+from tensorflow.python.keras.preprocessing.text import text_to_word_sequence
 #import fasttext.util
 #from fasttext import FastText
 from .utils import *
@@ -77,7 +78,10 @@ class PrepareData():
                 texts=[l.strip('\n') for l in f.readlines()]
                 predict_data={"texts":texts}
         elif params.csv_file:
-            pass
+            df=pd.read_csv(params.csv_file,sep='\t',header=None)
+            texts=df[df.columns[1]].to_list()
+            labels=df[df.columns[0]].to_list()
+            predict_data={"texts":texts,"labels":labels}
         elif params.sentence: 
             pass 
         else: 
@@ -134,10 +138,30 @@ class Preprocessing():
 
     @classmethod
     def for_prediction(cls,data):
-        data = data.texts
+        texts = data.texts
+        labels = data.labels
+        print(labels)
+        word_index=load_word_index() 
+        x_predict=np.array([cls.text_to_sequence(text) for text in texts])
+        config=load_json('aa/ressources/config/model_config.json')
+        x_predict = pad_sequences(x_predict, padding='post', maxlen=config['max_length'])
+
+        labelsEncoded_labels=load_dict_labels()
+        print(labelsEncoded_labels)
+        #Index out of label 
+        idx_ool= len(labelsEncoded_labels) + 1
+        labels_labelsEncoded={v:k for k,v in labelsEncoded_labels.items()}
+        y_predict=[labels_labelsEncoded.get(label) if label in labels_labelsEncoded else idx_ool for label in labels]
+        y_predict = cls.convert_label(list(labelsEncoded_labels.keys()),y_predict)
+        predict_data={"x_predict":x_predict,"y_predict":y_predict}
+        return cls(**predict_data) 
+
+    @classmethod
+    def for_prediction_bis(cls,data):
+        texts = data.texts
         word_index=load_word_index() 
         sentences=[]       
-        for d in data: 
+        for d in texts: 
           sentence=[]
           words=d.split()
           for word in words: 
@@ -180,10 +204,15 @@ class Preprocessing():
         return x 
 
     @staticmethod
-    def convert_label(labels,y:List):
+    def convert_label(labels:List,y:List):
         y = to_categorical(y,num_classes=len(set(labels)))
         return y 
-
+    
+    @staticmethod
+    def text_to_sequence(text:List):
+        word_index=load_word_index()
+        sequence=[word_index.get(word) if word in word_index else 0 for word in text.split()]
+        return np.array(sequence)
     def prepare_custom_embedding(self,emb_config):
         logging.info("Create Embedding Matrix")
         file_vec="aa/ressources/pretrained_emb/word2vec_%s.wordvectors" % emb_config.vector_size
@@ -235,23 +264,8 @@ class Preprocessing():
         training_data=[x_train,y_train]
         validation_data = [x_val,y_val]
         return training_data,validation_data
-    """
-    def prepare_bin_embedding(self,file_name):
-        #Get vocab= word_index
-        word_index=self.get_vocab()
-        #Get dimension of FastText embedding 
-        embedding_dim=300
-        #Get size of vocab == word_index
-        vocab_size=self.get_vocab_size()
-        #Initialize embedding_matrix 
-        embedding_matrix = np.zeros((vocab_size, embedding_dim))
-        for word,idx in word_index.items():
-            try: 
-                embedding_matrix[idx] = ft.get_word_vector(word)
-            except: 
-                pass
-        return embedding_matrix
-    """
+    
+    
 
     
 

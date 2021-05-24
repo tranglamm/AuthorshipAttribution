@@ -86,8 +86,7 @@ def load_dict_labels():
             dict_labels = pickle.load(handle)
     else: 
         print("Please train your model before running test ...")
-
-
+    return dict_labels
 
 def clean_tweet(texte):
     texte=re.sub(r'&gt;|&amp;|"','',texte)
