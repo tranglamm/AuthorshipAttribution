@@ -20,7 +20,7 @@ This example shows you how to train a model
 python train.py --train_data aa/data/Campagne2017.csv --sep '\t' --custom_emb w2v --output test_model
 ```
 
-For this tutorial, we serve Campagne2017.csv as training data (It is a French Corpus of the 2017 presidential election in france. There are 5 main candidates encoded with the labels (Melenchon, Hamon, Macron, Fillon, LePen) [Source](https://choosealicense.com/licenses/mit/)
+For this tutorial, we serve Campagne2017.csv as training data (It is a French Corpus of the 2017 presidential election in france. There are 5 main candidates encoded with the labels (Melenchon, Hamon, Macron, Fillon, LePen) [Source](https://github.com/lvanni/hyperdeep)
 
 ### **Arguments:** 
 
@@ -58,8 +58,7 @@ For evaluation/prediction, you can pass either a **sentence** or a **csv** file:
 
 **---deconv** :  bool. (Whether you want to use the deconvolution technique to highlight the most important patterns which contribute to the decision of your model) 
 
-<img src="images_ReadMe/Deconv.png" alt="deconv" heigth="300"/>
-![image](images_ReadMe/Deconv.png)
+<img src="images_ReadMe/Deconv.png" alt="deconv" height="300"/>
 
 
 **---output_csv** :  your output csv file if you want to output a csv file containing 4 columns Text, True Label, Predict Label, Predictions Score. 
@@ -71,13 +70,9 @@ For evaluation/prediction, you can pass either a **sentence** or a **csv** file:
 ```python
 python sentencesimilarity.py --train_data aa/data/Campagne2017.csv --query "vœux pour l' année 2018 . Je vous espère en famille , au milieu de vos proches , de celles et ceux qui vous aiment . Je sais aussi que certains d' entre vous sont aujourd' hui au travail parce qu' ils font partie des forces armées ou des forces"
 ```
-Output: 
-Query: vœux pour l' année 2018 . Je vous espère en famille , au milieu de vos proches , de celles et ceux qui vous aiment . Je sais aussi que certains d' entre vous sont aujourd' hui au travail parce qu' ils font partie des forces armées ou des forces 
-Top 5 most similar sentences in corpus: 
-Mes chers amis , C' est un plaisir de me retrouver parmi vous et puisque l' heure est encore aux vœux , je souhaite à chacune et chacun de vous une bonne année 2017 . Soyez heureux , prenez soin de vous et de ceux que vous aimez , soyez Fillon (Score: 0.9643) 
-que j' aime et à vous tous , j' adresse mes vœux de bonheur et de succès pour cette nouvelle année qui commence . Je suis parmi vous , avec le cœur encore serré par la tragédie du 14 juillet . De ce souvenir monte en moi une volonté inflexible Fillon (Score: 0.9587) 
-Du fond du coeur , merci à vous tous et à vous toutes . Merci à tous les élus qui m' accompagnent et qui sont ici présents . Je suis heureux d' être avec vous , dans cette belle Auvergne , dont l' exceptionnelle chaîne volcanique mériterait bien d' être Fillon (Score: 0.9578) Mes amis , mes chers compatriotes , C' est à Nice et c' est avec vous que je repars en campagne . A cette ville que j' aime et à vous tous , j' adresse mes vœux de bonheur et de succès pour cette nouvelle année qui commence . Je Fillon (Score: 0.9526) 
-chacune et chacun de vous une bonne année 2017 . Soyez heureux , prenez soin de vous et de ceux que vous aimez , soyez passionnés , ne renoncez pas à vos rêves , et puisque vous avez la France au cœur , engagez -vous pour elle , mobilisez -vous Fillon (Score: 0.9486)
+
+<img src="images_ReadMe/sentence_sim.png" alt="sentence_sim" height="300"/>
+
 
 ### Case 2: Compute the similarity of 2 queries
 
