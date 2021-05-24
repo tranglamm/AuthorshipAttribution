@@ -58,11 +58,7 @@ For evaluation/prediction, you can pass either a **sentence** or a **csv** file:
 
 **---deconv** :  bool. (Whether you want to use the deconvolution technique to highlight the most important patterns which contribute to the decision of your model) 
 
-<<<<<<< HEAD
-<img src="images_ReadMe/Deconv.png" alt="deconv" height="300"/>
-=======
-<img src="images_ReadMe/Deconv.png" alt="deconv" heigth="300"/>
->>>>>>> 4cecac625976321d47fe4ac4a9011a387d7263cd
+<img src="images_ReadMe/Deconv.png" alt="deconv" heigth="100"/>
 
 
 **---output_csv** :  your output csv file if you want to output a csv file containing 4 columns Text, True Label, Predict Label, Predictions Score. 
@@ -75,7 +71,7 @@ For evaluation/prediction, you can pass either a **sentence** or a **csv** file:
 python sentencesimilarity.py --train_data aa/data/Campagne2017.csv --query "vœux pour l' année 2018 . Je vous espère en famille , au milieu de vos proches , de celles et ceux qui vous aiment . Je sais aussi que certains d' entre vous sont aujourd' hui au travail parce qu' ils font partie des forces armées ou des forces"
 ```
 
-<img src="images_ReadMe/sentence_sim.png" alt="sentence_sim" height="300"/>
+<img src="images_ReadMe/sentence_sim.png" alt="sentence_sim" heigth="100"/>
 
 
 ### Case 2: Compute the similarity of 2 queries
