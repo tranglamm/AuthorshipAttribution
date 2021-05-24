@@ -57,6 +57,8 @@ For evaluation/prediction, you can pass either a **sentence** or a **csv** file:
 **---sep** : seperator of your csv file (by default '\t') 
 
 **---deconv** :  bool. (Whether you want to use the deconvolution technique to highlight the most important patterns which contribute to the decision of your model) 
+
+<img src="images_ReadMe/Deconv.png" alt="deconv" heigth="300"/>
 ![image](images_ReadMe/Deconv.png)
 
 
