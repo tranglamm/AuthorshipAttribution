@@ -3,9 +3,8 @@ Evaluate a csv file =>
     Matrix Confusion 
     CSV file : true_target predict_target prediction_score 
 """
-from aa import CNN
-from aa.config_utils import *
-from aa.preprocessing import *
+from aa import *
+
 import tensorflow
 from tensorflow import keras
 from tensorflow.keras.models import load_model
@@ -16,8 +15,6 @@ import random
 import argparse
 import time
 import numpy as np
-from aa.preprocessing import *
-from aa.embedder import *
 import logging
 from sklearn.metrics import confusion_matrix
 import pandas as pd

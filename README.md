@@ -111,7 +111,7 @@ python sentencesimilarity.py --query1 "Je crois très profondément que l' Europ
 
 ## Visualization - Topic Modeling
 
-![](images_ReadMe/clustering.png)
+![Visualization for topic modeling](images_ReadMe/clustering.html)
 
 
 

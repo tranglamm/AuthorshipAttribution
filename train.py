@@ -1,21 +1,17 @@
-from aa.models import attention
-from aa import CNN, Attention
-from aa.config_utils import *
-from aa import preprocessing
+from aa import *
+
 import tensorflow
 from tensorflow import keras
 from tensorflow.keras import optimizers
-
 from tensorflow.keras.callbacks import EarlyStopping,ModelCheckpoint
 from tensorflow.keras.layers import Conv2D
+
 import os
 import json
 import random
 import argparse
 import time
 import numpy as np
-from aa.preprocessing import *
-from aa.embedder import *
 import logging
 logging.basicConfig(level=logging.DEBUG)
 

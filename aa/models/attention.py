@@ -24,12 +24,10 @@ class Attention:
         uitw_layer = TimeDistributed(uw_dense)(uit_layer)
 
         def exponential(v):
-            #return K.tf.exp(v)	
             return K.exp(v)
         uitw_layer = Lambda(exponential,output_shape=(config.max_length,1))(uitw_layer)
 
         def sum(v):
-            #return K.tf.reduce_sum(v,1)
             return tf.math.reduce_sum(v,1)
 
         sum_uitw_layer = Lambda(sum,output_shape=(1,))(uitw_layer)
@@ -39,7 +37,6 @@ class Attention:
         def attention_compute(v):
             up_part = v[0]
             low_part = v[1]
-            #return K.tf.divide(up_part,low_part)
             return tf.math.divide(up_part,low_part)
         ait_layer = Lambda(attention_compute,output_shape=(config.max_length,),name="attention_compute")([uitw_layer,sum_uitw_layer])
 
