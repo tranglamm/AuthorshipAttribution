@@ -109,6 +109,9 @@ python sentencesimilarity.py --train_data aa/data/Campagne2017.csv --query "vœu
 python sentencesimilarity.py --query1 "Je crois très profondément que l' Europe peut devenir cette puissance économique , sociale , écologique et scientifique qui pourra faire face à la Chine , aux Etats-Unis en portant ces valeurs qui nous ont faits et qui sont notre histoire commune . J' ai besoin de votre détermination pour" --query2 "vœux pour l' année 2018 . Je vous espère en famille , au milieu de vos proches , de celles et ceux qui vous aiment . Je sais aussi que certains d' entre vous sont aujourd' hui au travail parce qu' ils font partie des forces armées ou des forces"
 ```
 
+## Visualization - Topic Modeling
+
+![](images_ReadMe/clustering.mov )
 
 
 
