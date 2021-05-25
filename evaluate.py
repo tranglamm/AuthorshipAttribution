@@ -99,6 +99,32 @@ def colorize(words,deconv_values,prediction):
     
     return colored_string
 
+def colorizeAttention(words,attention_scores,prediction):
+
+
+    #word_cmap = matplotlib.cm.PiYG
+    #word_cmap = matplotlib.cm.BuPu
+    word_cmap = matplotlib.cm.BuPu
+    #prob_cmap = matplotlib.cm.Pastel
+    template = '<span class="barcode"; style="color: black; background-color: {}">{} </span>'
+    colored_string = ''
+    # Use a matplotlib normalizer in order to make clearer the difference between values
+    normalized_and_mapped = matplotlib.cm.ScalarMappable(cmap=word_cmap).to_rgba(attention_scores)
+    print(normalized_and_mapped.shape)
+    for word, color in zip(words, normalized_and_mapped):
+        color = matplotlib.colors.rgb2hex(color[:3])
+        colored_string += template.format(color, word)
+    color="#B5B3D5"
+    colored_string += template.format(color, "    Label: {} |".format(np.argmax(prediction)))
+    
+    prob = np.amax(prediction)
+    #color = matplotlib.colors.rgb2hex(prob_cmap(prob)[:3])
+    
+    colored_string += template.format(color, "{:.2f}%".format(prob*100)) + '|'
+    
+    return colored_string
+
+
 def get_parser():
     """
     Generate a parameters parser.
@@ -108,7 +134,7 @@ def get_parser():
     parser = argparse.ArgumentParser(description="Training model")
     requiredNamed = parser.add_argument_group('required named arguments')
     
-    requiredNamed.add_argument("--file_vec", type=str, default="",required=True,
+    parser.add_argument("--file_vec", type=str, default="",
                         help="Path of your Word Embeddings that can be found in aa/pretrained_emb directory")
 
     requiredNamed.add_argument("--model", type=str, default="",required=True,
@@ -125,6 +151,9 @@ def get_parser():
     
     parser.add_argument("--output_csv", type=str, default="",
                         help="Path of csv file")
+    
+    parser.add_argument("--attention", type=bool, default="",
+                        help="if you want to visualize attention score ")
 
     parser.add_argument("--deconv", type=bool, default="",
                         help="Output a file res with the activation score given by the deconvolution for each word")
@@ -176,9 +205,9 @@ def main(params):
         for layer in deconv_model.layers:	
             if type(layer) is Conv2D:
                 deconv_weights = layer.get_weights()[0]
-                print(deconv_weights.shape)
+                #print(deconv_weights.shape)
         
-        print(deconv_model.layers[-1].get_weights()[0].shape)
+        #print(deconv_model.layers[-1].get_weights()[0].shape)
         deconv_bias = deconv_model.layers[-1].get_weights()[1]
         deconv_model.layers[-1].set_weights([deconv_weights, deconv_bias])
         
@@ -198,13 +227,23 @@ def main(params):
             print(colored_string)
             display(HTML(colored_string))
             
-    print("----------------------------")
-    results_dir="aa/results"
-    if not os.path.exists(results_dir):
-        os.makedirs(results_dir)
-    result_path = os.path.join(results_dir, params.txt_file.split('/')[-1] + ".res")
-    with open(result_path, "w", encoding='utf-8') as f:
-        f.write(json.dumps(result,cls=NumpyEncoder,ensure_ascii=False,indent=2))
+        print("----------------------------")
+        results_dir="aa/results"
+        if not os.path.exists(results_dir):
+            os.makedirs(results_dir)
+        result_path = os.path.join(results_dir, params.txt_file.split('/')[-1] + ".res")
+        with open(result_path, "w", encoding='utf-8') as f:
+            f.write(json.dumps(result,cls=NumpyEncoder,ensure_ascii=False,indent=2))
+
+    if params.attention: 
+        attention_model = load_model(params.model + ".attention")
+        atn_scores= attention_model.predict(x_predict)
+        for text, attention_scores, prediction in zip(data.texts,atn_scores,predictions):
+            words=text.split()
+            attention_scores=[float(atn_score) for atn_score in attention_scores]
+            print(attention_scores)
+            colored_string=colorizeAttention(words,attention_scores,prediction)
+            print(colored_string)
 
 if __name__=="__main__":
     parser=get_parser()

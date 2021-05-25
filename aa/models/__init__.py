@@ -1,1 +1,2 @@
-from . import cnn
+from .cnn import CNN
+from .attention import Attention 

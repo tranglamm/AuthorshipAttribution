@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Un
 import os
 class Config: 
     def __init__(self,**kwargs):
-        #Model configuration 
+        #Model CNN configuration 
         self.emb_dim = kwargs.pop("emb_dim", 128)
         self.max_length = kwargs.pop("max_length", 50)
         self.vocab_size = kwargs.pop("vocab_size", 0)
@@ -16,6 +16,10 @@ class Config:
         self.num_epochs = kwargs.pop("num_epochs",20)
         self.batch_size = kwargs.pop("batch_size",800)
 
+
+        #Model Attention configuration 
+        self.rnn_dim=kwargs.get("rnn_dim",100)
+        
         #Embedding configuration 
         self.model = kwargs.pop("model", "skipgram")
         self.vector_size = kwargs.pop("vector_size", 128)

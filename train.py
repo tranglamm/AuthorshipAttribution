@@ -1,8 +1,11 @@
-from aa import CNN
+from aa.models import attention
+from aa import CNN, Attention
 from aa.config_utils import *
 from aa import preprocessing
 import tensorflow
 from tensorflow import keras
+from tensorflow.keras import optimizers
+
 from tensorflow.keras.callbacks import EarlyStopping,ModelCheckpoint
 from tensorflow.keras.layers import Conv2D
 import os
@@ -37,6 +40,9 @@ def get_parser():
     parser.add_argument("--lg", type=str, default="",
                         help="Choose a language to download FastText pretrained Word Embeddings")
 
+    parser.add_argument("--model", type=str,default="cnn",
+                        help="Choose a model you want to use for training (cnn, attention, ...")
+
     parser.add_argument("--reduce_dim", type=int, default="300",
                         help="Reduce dimension of FastText pretrained Word Embeddings")
 
@@ -65,55 +71,73 @@ def main(params):
     print(x_train.shape)
     print(x_val.shape)
 
-    #Load embedding config 
+
+    output_dir="aa/output_models"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    output_file=os.path.join(output_dir,params.output)
+
+    #Load config_json for embedding and model 
     emb_config = EmbConfig.from_json_file("aa/ressources/config/emb_config.json")
-    #Load embeddings
-    #if have params lg => load pretrained embedding from FastText 
-    if params.lg: 
-        load_pretrained_embeddings(params)
-        embedding_matrix=preprocessing.prepare_txt_embedding(params.lg,emb_config)
-
-    elif params.custom_emb: 
-        if params.custom_emb=="w2v":
-            custom_w2v_embeddings(data.texts,emb_config)
-        elif params.custom_emb=="ft":
-            custom_ft_embeddings(data.texts,emb_config)
-        else: 
-            print("You have to choose between w2v or ft")
-        embedding_matrix=preprocessing.prepare_custom_embedding(emb_config)
-
-    #Build model 
     model_config = ModelConfig.from_json_file("aa/ressources/config/model_config.json")
-    if model_config.emb_dim != emb_config.vector_size:
-        raise Exception("The embedding dimension of model and word embeddings are not equal")   
-    else:  
-        output_dir="aa/output_models"
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-        
-        output_file=os.path.join(output_dir,params.output)
-        CnnModel=CNN(model_config,weight=embedding_matrix)
-        model,deconv_model=CnnModel.get_model()
-    
-        mc=[ModelCheckpoint(output_file, monitor='val_accuracy', verbose=1, save_best_only=True, mode='max'),
-            #EarlyStopping(patience=2,monitor="val_accuracy")
-            ]
-        history=model.fit(x_train, y_train,
-                        epochs=model_config.num_epochs,
-                        validation_data=(x_val,y_val),
-                        batch_size=model_config.batch_size,
-                        callbacks=mc)
-        model.save(output_file)
 
-        #save deconv model
-        i = 0
-        for layer in model.layers:	
-            weights = layer.get_weights()
-            deconv_model.layers[i].set_weights(weights)
-            i += 1
-            if type(layer) is Conv2D:
-                break
-        deconv_model.save(output_file + ".deconv")
+    if params.model == "cnn" or params.model == "attention": 
+        #Load embeddings
+        #if have params lg => load pretrained embedding from FastText 
+        if params.lg: 
+            load_pretrained_embeddings(params)
+            embedding_matrix=preprocessing.prepare_txt_embedding(params.lg,emb_config)
+
+        elif params.custom_emb: 
+            if params.custom_emb=="w2v":
+                custom_w2v_embeddings(data.texts,emb_config)
+            elif params.custom_emb=="ft":
+                custom_ft_embeddings(data.texts,emb_config)
+            else: 
+                print("You have to choose between w2v or ft")
+            embedding_matrix=preprocessing.prepare_custom_embedding(emb_config)
+
+        #Assert emb_dim in model_config.json == emb_config.json 
+        if model_config.emb_dim != emb_config.vector_size:
+            raise Exception("The embedding dimension of model and word embeddings are not equal")   
+        
+        else:  
+            opt = optimizers.Adam(lr=model_config.lr)
+            mc=[ModelCheckpoint(output_file, monitor='val_accuracy', verbose=1, save_best_only=True, mode='max'),
+                #EarlyStopping(patience=2,monitor="val_accuracy")
+                ]
+            if params.model=="cnn":
+                CnnModel=CNN(model_config,weight=embedding_matrix)
+                model,deconv_model=CnnModel.get_model()
+                model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
+                model.fit(x_train, y_train,
+                            epochs=model_config.num_epochs,
+                            validation_data=(x_val,y_val),
+                            batch_size=model_config.batch_size,
+                            callbacks=mc)
+
+                model.save(output_file)
+
+                #save deconv model
+                i = 0
+                for layer in model.layers:	
+                    weights = layer.get_weights()
+                    deconv_model.layers[i].set_weights(weights)
+                    i += 1
+                    if type(layer) is Conv2D:
+                        break
+                deconv_model.save(output_file + ".deconv")
+
+            elif params.model=="attention":
+                model,attention_model = Attention.build(model_config)
+                model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
+                model.fit(x_train, y_train,
+                            epochs=model_config.num_epochs,
+                            validation_data=(x_val,y_val),
+                            batch_size=model_config.batch_size,
+                            callbacks=mc)
+                attention_model.save(output_file + ".attention")
+                model.save(output_file)
 
 if __name__=="__main__":
     parser=get_parser()

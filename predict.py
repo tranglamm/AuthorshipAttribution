@@ -49,7 +49,7 @@ def get_parser():
     
     """
     # parse parameters
-    parser = argparse.ArgumentParser(description="Training model")
+    parser = argparse.ArgumentParser(description="Evaluating model")
     requiredNamed = parser.add_argument_group('required named arguments')
     
     requiredNamed.add_argument("--file_vec", type=str, default="",required=True,
