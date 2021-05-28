@@ -62,6 +62,8 @@ def split_sent(texts, labels):
             new_labels.extend([label])
     return new_texts, new_labels
 
+
+
 def save_word_index(word_index):
     path= "aa/ressources/word_index.pickle"
     with open(path, 'wb') as handle:

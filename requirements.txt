@@ -1,5 +1,10 @@
 fasttext
 tensorflow
+gensim
 torch
 transformers
+umap
+hdbscan
+umap-learn[plot]
+bokeh
 sentence-transformers

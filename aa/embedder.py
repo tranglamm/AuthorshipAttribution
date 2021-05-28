@@ -24,8 +24,6 @@ from .preprocessing_utils import *
 from gensim.models.fasttext import FastText
 import gensim
 
-logger = getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 def load_pretrained_embeddings(params=None):
     """
     Reload pretrained embeddings from FastText.

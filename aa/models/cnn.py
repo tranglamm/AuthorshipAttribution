@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import *
 from tensorflow.keras.layers import Embedding,Dense,Dropout, Flatten, Input, Concatenate
 from tensorflow.keras.layers import Conv2D, Conv2DTranspose, MaxPooling2D,  Embedding, Reshape
 

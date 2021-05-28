@@ -22,8 +22,6 @@ import gzip
 from urllib.request import urlopen
 
 
-logger = getLogger()
-
 valid_lang_ids = {"af", "sq", "als", "am", "ar", "an", "hy", "as", "ast",
                   "az", "ba", "eu", "bar", "be", "bn", "bh", "bpy", "bs",
                   "br", "bg", "my", "ca", "ceb", "bcl", "ce", "zh", "cv",

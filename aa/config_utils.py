@@ -20,6 +20,7 @@ class Config:
         #Model Attention configuration 
         self.rnn_dim=kwargs.get("rnn_dim",100)
         
+
         #Embedding configuration 
         self.model = kwargs.pop("model", "skipgram")
         self.vector_size = kwargs.pop("vector_size", 128)
@@ -60,5 +61,10 @@ class EmbConfig(Config):
     For more information, please feel free to take a look at 
     https://radimrehurek.com/gensim/auto_examples/tutorials/run_fasttext.html
     """
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
+
+
+class TransformerConfig(Config): 
     def __init__(self,**kwargs):
         super().__init__(**kwargs)

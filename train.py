@@ -1,3 +1,6 @@
+from tensorflow.python.autograph.pyct import transformer
+from aa.models.transformer_classification import Transformers
+from tensorflow.python.keras.preprocessing.text import Tokenizer
 from aa import *
 
 import tensorflow
@@ -5,7 +8,7 @@ from tensorflow import keras
 from tensorflow.keras import optimizers
 from tensorflow.keras.callbacks import EarlyStopping,ModelCheckpoint
 from tensorflow.keras.layers import Conv2D
-
+from transformers import AutoModel, AutoTokenizer, AutoConfig
 import os
 import json
 import random
@@ -27,6 +30,9 @@ def get_parser():
     requiredNamed.add_argument("--train_data", type=str, default="",
                         help="Path of training file CSV", required=True)
 
+    parser.add_argument("--max_length", type=int,
+                        help="Define the maximum sequence length --> it will be used to truncate and pad the sequence.")
+
     requiredNamed.add_argument("--output", type=str, default="",
                         help="Path of output", required=True)
 
@@ -37,7 +43,8 @@ def get_parser():
                         help="Choose a language to download FastText pretrained Word Embeddings")
 
     parser.add_argument("--model", type=str,default="cnn",
-                        help="Choose a model you want to use for training (cnn, attention, ...")
+                        help=r"""Choose a model you want to use for training (cnn, attention, transformers). 
+                        If transformers, please specify the pretrained_model_name. For example FlauBERT --model transformers/flaubert/flaubert-cased """)
 
     parser.add_argument("--reduce_dim", type=int, default="300",
                         help="Reduce dimension of FastText pretrained Word Embeddings")
@@ -58,26 +65,24 @@ def get_parser():
     return parser 
 
 def main(params):
-    data=PrepareData.for_training(params)
-    preprocessing=Preprocessing.for_training(data)
-    x_train, y_train = preprocessing.x_train, preprocessing.y_train
-    x_val, y_val = preprocessing.x_val, preprocessing.y_val
-    print(preprocessing.get_vocab_size())
-    print(preprocessing.get_vocab())
-    print(x_train.shape)
-    print(x_val.shape)
-
-
     output_dir="aa/output_models"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     output_file=os.path.join(output_dir,params.output)
 
-    #Load config_json for embedding and model 
-    emb_config = EmbConfig.from_json_file("aa/ressources/config/emb_config.json")
-    model_config = ModelConfig.from_json_file("aa/ressources/config/model_config.json")
-
     if params.model == "cnn" or params.model == "attention": 
+        data=PrepareData.for_training(params)
+        preprocessing=Preprocessing.for_training(data)
+        x_train, y_train = preprocessing.x_train, preprocessing.y_train
+        x_val, y_val = preprocessing.x_val, preprocessing.y_val
+        print(preprocessing.get_vocab_size())
+        print(preprocessing.get_vocab())
+        print(x_train.shape)
+        print(x_val.shape)
+
+        #Load config_json for embedding and model 
+        emb_config = EmbConfig.from_json_file("aa/ressources/config/emb_config.json")
+        model_config = ModelConfig.from_json_file("aa/ressources/config/model_config.json")
         #Load embeddings
         #if have params lg => load pretrained embedding from FastText 
         if params.lg: 
@@ -135,6 +140,19 @@ def main(params):
                 attention_model.save(output_file + ".attention")
                 model.save(output_file)
 
+    elif len(params.model.split("/")) >1:
+        data=PrepareData.for_transformer(params)
+        
+        pretrained_model_name="/".join(params.model.split("/")[1:])
+        print(pretrained_model_name)
+        transformer_config=CONFIG_JSON["transformer_config"]
+        config = AutoConfig.from_pretrained(transformer_config)
+        transformer_model = AutoModel.from_pretrained(pretrained_model_name, config = transformer_config)
+        tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name)
+        
+        preprocessing=Preprocessing.for_transformer_training(data,transformer_model,tokenizer)
+        model = Transformers.classification_2(config)
+        
 if __name__=="__main__":
     parser=get_parser()
     params = parser.parse_args()

@@ -8,8 +8,6 @@ from sklearn.feature_extraction.text import CountVectorizer
 
 
 
-
-
 def get_parser():
     """
     Generate a parameters parser.
