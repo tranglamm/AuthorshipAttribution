@@ -1,5 +1,6 @@
+from aa.config_utils import TrainingConfig
 from tensorflow.python.autograph.pyct import transformer
-from aa.models.transformer_classification import Transformers
+from aa.models.transformer_classification import CombineCnn, Transformers
 from tensorflow.python.keras.preprocessing.text import Tokenizer
 from aa import *
 
@@ -15,8 +16,8 @@ import random
 import argparse
 import time
 import numpy as np
+import torch 
 import logging
-logging.basicConfig(level=logging.DEBUG)
 
 def get_parser():
     """
@@ -141,18 +142,30 @@ def main(params):
                 model.save(output_file)
 
     elif len(params.model.split("/")) >1:
-        data=PrepareData.for_transformer(params)
         
         pretrained_model_name="/".join(params.model.split("/")[1:])
-        print(pretrained_model_name)
         transformer_config=CONFIG_JSON["transformer_config"]
         config = AutoConfig.from_pretrained(transformer_config)
-        transformer_model = AutoModel.from_pretrained(pretrained_model_name, config = transformer_config)
-        tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name)
         
-        preprocessing=Preprocessing.for_transformer_training(data,transformer_model,tokenizer)
-        model = Transformers.classification_2(config)
+        #Preprocessing Data 
+        preprocessing=TransformerPreprocessing(params)
+        training_loader,validation_loader = preprocessing.get_training_set()
         
+        #Build Model
+        
+        model = CombineCnn(config,pretrained_model_name)
+        
+        #Train model
+        training_config_json = CONFIG_JSON["training_config"]
+        training_config = TrainingConfig.from_json_file(training_config_json)
+        training = TrainingTransformer(model,training_config)
+        training.train(training_loader)
+
+        #Save model
+        output_file_name = output_file+".pt"
+        torch.save(model.state_dict(), output_file_name)
+
+
 if __name__=="__main__":
     parser=get_parser()
     params = parser.parse_args()

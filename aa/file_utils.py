@@ -1,8 +1,10 @@
 CONFIG_JSON = {
     "transformer_config": "aa/ressources/config/config.json",
+    "training_config": "aa/ressources/config/transformer_config.json",
     "model_config": "aa/ressources/config/model_config.json",
     "emb_config": "aa/ressources/config/model_config.json"
     }
+CONFIG_DIR = "aa/ressources/config"
 
 DATA_DIR = "aa/data"
 

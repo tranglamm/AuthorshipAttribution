@@ -17,6 +17,7 @@ from tensorflow.python.keras.preprocessing.text import text_to_word_sequence
 from .utils import *
 from .preprocessing_utils import *
 from .preprocessing_utils import *
+from .file_utils import *
 #from .config_utils import TrainConfig, EmbConfig
 import numpy as np
 import io
@@ -41,7 +42,7 @@ import logging
 from transformers import AutoTokenizer, AutoModel, AutoConfig, pipeline
 from torch.utils.data import Dataset, DataLoader
 
-
+config_dir = CONFIG_DIR
 
 class PrepareData():
     def __init__(self,**kwargs):
@@ -56,15 +57,17 @@ class PrepareData():
         config.max_position_embeddings=params.max_length if params.max_length and params.max_length <= config.max_position_embeddings else config.max_position_embeddings
         
         texts,labels=read_csv_file(params.train_data,params.sep)
-        data = {"texts":texts,"labels":labels,"max_length":config.max_position_embeddings}
         
+
         #If labels is not integer
         if not all(isinstance(x, int) for x in labels):
             label_encoder = LabelEncoder()
             labels_encoded = label_encoder.fit_transform(np.array(labels))
 
         config.num_labels=len(set(labels))
-        config.save_pretrained("aa/ressources/config")
+        config.save_pretrained(config_dir)
+        
+        data = dict(texts=texts,labels=labels_encoded,max_length=config.max_position_embeddings)
         save_dict_labels(labels_encoded,labels)
         return cls(**data)
 
@@ -84,7 +87,7 @@ class PrepareData():
 
         update_model_config({"num_classes":len(set(labels))})
         save_dict_labels(labels_encoded,labels)
-        training_data = {"texts":texts,"labels":labels_encoded,"max_length":max_length} 
+        training_data = dict(texts=texts,labels=labels_encoded,max_length=max_length)
         return cls(**training_data)
     
     @classmethod
@@ -99,12 +102,13 @@ class PrepareData():
             logging.info(f'Loading {params.txt_file} file...')
             with open(params.txt_file,"r",encoding="utf-8") as f: 
                 texts=[l.strip('\n') for l in f.readlines()]
-                predict_data={"texts":texts}
+                predict_data=dict(texts=texts)
         elif params.csv_file:
             df=pd.read_csv(params.csv_file,sep='\t',header=None)
             texts=df[df.columns[1]].to_list()
             labels=df[df.columns[0]].to_list()
-            predict_data={"texts":texts,"labels":labels}
+            predict_data = dict(texts=texts,labels=labels)
+
         elif params.sentence: 
             pass 
         else: 
@@ -163,21 +167,27 @@ class TransformerPreprocessing():
     def __init__(self,params):
         data = PrepareData.for_transformer(params)
         self.texts = data.texts
-        self.labels = data.labelss
+        self.labels = data.labels
         self.max_length = data.max_length
-        self.model_name = "/".join(params.model.split("/")[1:])
-        self.tokenizer =AutoTokenizer.from_pretrained(self.model_name)
+        pretrained_model_name = "/".join(params.model.split("/")[1:])
+        self.tokenizer =AutoTokenizer.from_pretrained(pretrained_model_name)
 
     def get_training_set(self):
         x_train, x_val, y_train, y_val=split_data(self.texts,self.labels)
-        y_train = Preprocessing.convert_label(self.labels,y_train)
-        y_val = Preprocessing.convert_label(self.labels, y_val)
         training_set = CustomTransformerData(self.tokenizer,x_train,y_train, self.max_length)
         validation_set = CustomTransformerData(self.tokenizer,x_val,y_val, self.max_length)
         training_loader = DataLoader(training_set, **self.train_params)
         validation_loader = DataLoader(validation_set, **self.valid_params)
         return training_loader, validation_loader
-    
+
+    def get_testing_set(self):
+        """
+        TODO: 
+        """
+        testing_set = CustomTransformerData(self.tokenizer,self.texts,self.labels, self.max_length)
+        testing_loader = DataLoader(testing_set, **self.test_params)
+        return testing_loader
+
 class Preprocessing():
     def __init__(self, **kwargs):
         self.x_train = kwargs.get("x_train",None)
@@ -187,46 +197,8 @@ class Preprocessing():
         self.x_predict = kwargs.get("x_predict",None)
         self.y_predict = kwargs.get("y_predict",None)
         self.tokenizer = kwargs.get("tokenizer",None)
-    
 
-    @classmethod 
-    def for_transformer_training(cls,data,model,tokenizer) -> "Preprocessing": 
-        print("Preprocessing...")
-        x_train, x_val, y_train, y_val=split_data(data.texts,data.labels)
-        max_length = data.max_length
-        inputs_train = tokenizer(x_train,return_tensors="pt",padding="max_length",max_length=max_length)
-        inputs_val = tokenizer(x_val,return_tensors="pt",padding="max_length",max_length=max_length)
-        x_train = model(**inputs_train)
-        x_train = x_train[0].detach().cpu().numpy()
-        x_val = model(**inputs_val)
-        x_val = x_val[0].detach().cpu().numpy()
-        y_train = cls.convert_label(data.labels,y_train)
-        y_val = cls.convert_label(data.labels,y_val)
-        training_data = {"x_train":x_train,"y_train":y_train,"x_val":x_val,"y_val":y_val}
-        return cls(**training_data)
         
-    @classmethod 
-    def for_transformer_training_bis(cls,data,tokenizer) -> "Preprocessing": 
-        x_train, x_val, y_train, y_val=split_data(data.texts,data.labels)
-        max_length = data.max_length
-        input_ids_train, attention_mask_train = cls.encode_transformer_data(tokenizer, x_train, max_length)
-        input_ids_val, attention_mask_val = cls.encode_transformer_data(tokenizer, x_val, max_length)       
-        x_train = {"input_ids":input_ids_train, "attention_mask":attention_mask_train}
-        x_val = {"input_ids":input_ids_val, "attention_mask":attention_mask_val}
-        y_train = cls.convert_label(data.labels,y_train)
-        y_val = cls.convert_label(data.labels,y_val)
-        training_data = {"x_train":x_train,"y_train":y_train,"x_val":x_val,"y_val":y_val}
-        return cls(**training_data)
-
-    
-    @classmethod 
-    def for_transformer_prediction(cls,data,tokenizer) -> "Preprocessing": 
-        x_predict, y_predict = data.texts,data.labels
-        max_length = data.max_length
-        input_ids_predict, attention_mask_predict = cls.encode_transformer_data(tokenizer, x_predict, max_length)
-        x_predict = {"input_ids":input_ids_predict, "attention_mask":attention_mask_predict}
-        predict_data = {"x_predict":x_predict,"y_predict":y_predict}
-        return cls(**predict_data)
     
     @classmethod
     def for_training(cls,data) -> "Preprocessing":
@@ -261,6 +233,7 @@ class Preprocessing():
         predict_data={"x_predict":x_predict,"y_predict":y_predict}
         return cls(**predict_data) 
 
+    """
     @classmethod
     def for_prediction_bis(cls,data):
         texts = data.texts
@@ -280,7 +253,7 @@ class Preprocessing():
         x_predict = pad_sequences(x_predict, padding='post', maxlen=config['max_length'])
         predict_data={"x_predict":x_predict}
         return cls(**predict_data) 
-
+    """
     
     def get_vocab(self):
         """

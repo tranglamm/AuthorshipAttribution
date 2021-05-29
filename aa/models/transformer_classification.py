@@ -7,7 +7,7 @@ import torch
 from torch import nn 
 import torch.nn.functional as F
 
-NB_FILTERS = 100
+NB_FILTERS = 64
 FILTER_SIZES =[3]
 
 class AutoModelTransformers(nn.Module):
@@ -15,9 +15,14 @@ class AutoModelTransformers(nn.Module):
         super().__init__()
         self.classifier = AutoModelForSequenceClassification.from_pretrained(pretrained_model_name,num_labels = config.num_labels)
     def forward(self, 
-                **inputs
+                input_ids, 
+                attention_mask,
+                token_type_ids
                 ):
-        outputs = self.classifier(**inputs)
+        outputs = self.classifier(input_ids=input_ids, 
+                            attention_mask=attention_mask,
+                            token_type_ids=token_type_ids
+                            )
         return outputs
 
 class ClassificationMLP(nn.Module):
@@ -35,13 +40,23 @@ class ClassificationMLP(nn.Module):
         self.classifier = torch.nn.Linear(config.hidden_size, config.num_labels)
 
     def forward(self, 
-                **inputs
+                input_ids, 
+                attention_mask,
+                token_type_ids
                 ):
         if self.static: 
             with torch.no_grad():
-                outputs = self.model(**inputs)
+                outputs = self.model(input_ids=input_ids, 
+                            attention_mask=attention_mask,
+                            token_type_ids=token_type_ids
+                            )
+
         else: 
-            outputs = self.model(**inputs)
+            outputs = self.model(input_ids=input_ids, 
+                            attention_mask=attention_mask,
+                            token_type_ids=token_type_ids
+                            )
+
         last_hidden_state = outputs[0]
         pooler = last_hidden_state[:,0,:]
         pooler = self.pre_classifier(pooler)
@@ -64,20 +79,24 @@ class CombineCnn(nn.Module):
         self.model = AutoModel.from_pretrained(pretrained_model_name)
         self.convs = nn.ModuleList([
                                     nn.Conv2d(in_channels = 1, 
-                                              out_channels = config.nb_filters, 
+                                              out_channels = 64, 
                                               kernel_size = (fs, config.hidden_size)) 
                                     for fs in self.filter_sizes
                                     ])
+        self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.2)
-        self.pre_classifier = torch.nn.Linear(len(self.filter_sizes)*config.nb_filters,100)
-        self.classifier = torch.nn.Linear(100, config.num_labels)
+        self.classifier = torch.nn.Linear(64, config.num_labels)
 
 
     def forward(self, 
-                **inputs
+                input_ids, 
+                attention_mask,
+                token_type_ids
                 ):
-       
-        outputs= self.model(**inputs)
+        outputs = self.model(input_ids=input_ids, 
+                            attention_mask=attention_mask,
+                            token_type_ids=token_type_ids
+                            )
 
         #last_hidden_state.size() = batch * 62 * 78      
         last_hidden_state = outputs[0]
@@ -90,13 +109,12 @@ class CombineCnn(nn.Module):
         conved = [F.relu(conv(embedded)).squeeze(3) for conv in self.convs]
         
         #pooled.size() = batch * 512
-        pooled = [F.max_pool1d(F.relu(conv), conv.shape[2]).squeeze(2) for conv in conved]
+        pooled = [F.max_pool1d(self.relu(conv), conv.shape[2]).squeeze(2) for conv in conved]
 
 
         cat = self.dropout(torch.cat(pooled, dim = 1))
 
-        pre_classifier = F.relu(self.pre_classifier(cat))
-        logits = self.classifier(pre_classifier)
+        logits = self.classifier(cat)
         return logits
 
 

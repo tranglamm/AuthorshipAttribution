@@ -9,6 +9,7 @@ Save it to aa/ressources/pretraines_emb
 @author: Trang Lam - github.com/tranglamm
 """
 
+from aa.file_utils import PRETRAINED_EMB_DIR
 from logging import getLogger
 import io
 import numpy as np
@@ -21,6 +22,7 @@ import gzip
 
 from urllib.request import urlopen
 
+pretrained_dir = PRETRAINED_EMB_DIR
 
 valid_lang_ids = {"af", "sq", "als", "am", "ar", "an", "hy", "as", "ast",
                   "az", "ba", "eu", "bar", "be", "bn", "bh", "bpy", "bs",
@@ -90,7 +92,6 @@ def _download_gz_model(gz_file_name, if_exists):
     url = "https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/%s" % gz_file_name
 
     #pretrained_dir= the directory which stores fasttext embeddings = pretrained_emb
-    pretrained_dir="aa/ressources/pretrained_emb" 
     gz_file_name=os.path.join(pretrained_dir,gz_file_name)
     _download_file(url, gz_file_name)
 
@@ -108,7 +109,6 @@ def download_model(lang_id, format_vec, if_exists='strict' ,dimension=None):
 
     file_name = "cc.%s.300.%s" % (lang_id,format_vec)
     gz_file_name = "%s.gz" % file_name
-    pretrained_dir="aa/ressources/pretrained_emb" 
     file_name=os.path.join(pretrained_dir,file_name)
 
     if os.path.isfile(file_name):
@@ -151,10 +151,10 @@ def read_txt_embeddings(path, params):
             word, vect = line.rstrip().split(' ', 1)
             vect = np.fromstring(vect, sep=' ')
             if word in word2id:
-                logger.warning("Word \"%s\" found twice!" % word)
+                print("Word \"%s\" found twice!" % word)
                 continue
             if not vect.shape == (_emb_dim_file,):
-                logger.warning("Invalid dimension (%i) for word \"%s\" in line %i."
+                print("Invalid dimension (%i) for word \"%s\" in line %i."
                                % (vect.shape[0], word, i))
                 continue
             assert vect.shape == (_emb_dim_file,)
@@ -162,7 +162,7 @@ def read_txt_embeddings(path, params):
             vectors.append(vect[None])
 
     assert len(word2id) == len(vectors)
-    logger.info("Loaded %i pretrained word embeddings from %s" % (len(vectors), path))
+    print("Loaded %i pretrained word embeddings from %s" % (len(vectors), path))
 
     # compute new vocabulary / embeddings
     embeddings = np.concatenate(vectors, 0)

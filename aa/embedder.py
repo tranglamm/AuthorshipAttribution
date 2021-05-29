@@ -20,15 +20,17 @@ from logging import getLogger
 import fasttext.util
 from .embedder_utils import download_model,read_txt_embeddings
 from .config_utils import EmbConfig
+from .file_utils import PRETRAINED_EMB_DIR
 from .preprocessing_utils import *
 from gensim.models.fasttext import FastText
 import gensim
 
+pretrained_dir=PRETRAINED_EMB_DIR
 def load_pretrained_embeddings(params=None):
     """
     Reload pretrained embeddings from FastText.
     """
-    logger.info(
+    print(
       "Due to the dimension of pretrained embeddings FastText is set to 300.\
       => The emb_dim of your model will also set to 300. If you want to reduce dimension, please add --reduce_dim (It can take a lot of time) "
     )
@@ -37,7 +39,7 @@ def load_pretrained_embeddings(params=None):
     lang=params.lg
 
     #pretrained_dir= the directory which stores fasttext embeddings = pretrained_emb
-    pretrained_dir="aa/ressources/pretrained_emb" 
+    
     if not os.path.exists(pretrained_dir):
         os.makedirs(pretrained_dir)
     
@@ -60,7 +62,7 @@ def load_pretrained_embeddings(params=None):
         file_name="cc.%s.%s.%s" % (lang,params.reduce_dim,format_vec)
         path=os.path.join(pretrained_dir,file_name)
         ft.save_model(path)
-    logging.info(f"{lang} embeddings is saved at {path} ")
+    print(f"{lang} embeddings is saved at {path} ")
     return path 
     
 
@@ -72,12 +74,11 @@ def custom_w2v_embeddings(texts,emb_config):
     #https://radimrehurek.com/gensim/models/word2vec.html
     texts=[text.split() for text in texts]
     model = gensim.models.Word2Vec(texts, 
-    size=emb_config.vector_size,
-    window=emb_config.window,
-    workers=emb_config.workers,
-    sg=emb_config.sg)
+                                    size=emb_config.vector_size,
+                                    window=emb_config.window,
+                                    workers=emb_config.workers,
+                                    sg=emb_config.sg)
     word_vectors = model.wv
-    pretrained_dir="aa/ressources/pretrained_emb" 
     file_name="word2vec_%s.wordvectors" % emb_config.vector_size
 
     path=os.path.join(pretrained_dir,file_name)
@@ -86,7 +87,7 @@ def custom_w2v_embeddings(texts,emb_config):
         os.makedirs(pretrained_dir)
 
     if Path(path).exists():
-        logging.info("File exists => file will be overwritten")
+        print("File exists => file will be overwritten")
     word_vectors.save(path)
 
     return path

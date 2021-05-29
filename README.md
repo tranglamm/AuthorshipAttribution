@@ -12,19 +12,44 @@ pip install -r requirements.txt
 
 ## Training
 
-Before training, you have to define the hyperparamaters for your model => Go to ***aa/ressources/config/model_config.json*** and modify the hyperparameters or you can leave the default values.   
+Before training, you have to define the hyperparamaters of 
+1) Your model => Go to ***aa/ressources/config/model_config.json*** and modify the hyperparameters or you can leave the default values.   
+	> **Note:** 
+	> num_classes and vocab_size will be updated during training. 
+
+2) Your Word Embedding =>  Go to ***aa/ressources/config/model_config.json***, modify values or you can leave the default values 
+
+3) If you choose Transformers Model => Go to  ***aa/ressources/config/training_config.json***, modify Optimizer and Loss function or you can leave it with the default values. (By default, Optimizer is Adam and Loss is CrossEntropy)
 
 This example shows you how to train a model 
 
-CNN Model
+**CNN Model**
+1) Using Word2Vec to train Word Embeddings
 ```python
 python train.py --train_data aa/data/Campagne2017.csv --sep '\t' --model cnn --custom_emb w2v --output test_model
 ```
-Attention Model 
+2) Using FastText to train Word Embeddings 
+```python
+python train.py --train_data aa/data/Campagne2017.csv --model cnn --custom_emb ft --output test_model
+```
+3) Using pretrained Embeddings FastText 
+```python
+python train.py --train_data aa/data/Campagne2017.csv --model cnn --lg fr --output_file test_model
+```
 
+**Attention Model **
 ```python
 python train.py --train_data aa/data/Campagne2017.csv --sep '\t' --model attention --output test_model
 ```
+
+**Transformers**
+```python
+python train.py --train_data aa/data/Campagne2017.csv --model "transformers/flaubert/flaubert_base_cased" --output test_model
+```
+> **Note:** 
+> --model = transformers/pretrained_model_name (HuggingFace) 
+
+
 For this tutorial, we serve Campagne2017.csv as training data (It is a French Corpus of the 2017 presidential election in france. There are 5 main candidates encoded with the labels (Melenchon, Hamon, Macron, Fillon, LePen) [Source](https://choosealicense.com/licenses/mit/)
 
 ### **Arguments:** 
@@ -111,8 +136,7 @@ python sentencesimilarity.py --query1 "Je crois très profondément que l' Europ
 
 ## Visualization - Topic Modeling
 
-
-![](images_ReadMe/clustering.html)
+[Clustering of topic modeling](images_ReadMe/clustering.html)
 
 
 
