@@ -13,8 +13,10 @@ from sklearn.model_selection import train_test_split
 import pickle 
 import json
 from .utils import *
+from .file_utils import *
 
-
+ressources_dir = RESSOURCES_DIR 
+model_config_json = CONFIG_JSON["model_config"]
 
 def read_csv_file(data_path,sep,clean_text:bool=False):
     r"""
@@ -46,7 +48,7 @@ def split_sent(texts, labels):
     r"""
         Split Data according to max_length defined in model_config.json
     """
-    config=load_json('aa/ressources/config/model_config.json')
+    config=load_json(model_config_json)
     max_length=config['max_length']
     data = (np.zeros((len(texts),max_length ))).astype('int32')
     new_texts, new_labels = [],[]
@@ -62,32 +64,33 @@ def split_sent(texts, labels):
             new_labels.extend([label])
     return new_texts, new_labels
 
+
+
 def save_word_index(word_index):
-    path= "aa/ressources/word_index.pickle"
+    path = os.path.join(ressources_dir,"word_index.pickle")
     with open(path, 'wb') as handle:
         pickle.dump(word_index, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 def load_word_index():
-    path= "aa/ressources/word_index.pickle"
+    path = os.path.join(ressources_dir,"word_index.pickle")
     with open(path, 'rb') as handle:
         word_index = pickle.load(handle)
     return word_index
 
 def save_dict_labels(labels_encoded,labels):
     dict_labels=dict(zip(labels_encoded, labels))
-    path= "aa/ressources/dict_labels.pickle"
+    path = os.path.join(ressources_dir,"dict_labels.pickle")
     with open(path, 'wb') as handle:
         pickle.dump(dict_labels, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 def load_dict_labels():
-    path= "aa/ressources/dict_labels.pickle"
+    path = os.path.join(ressources_dir,"dict_labels.pickle")
     if Path(path).exists():
         with open(path, 'rb') as handle:
             dict_labels = pickle.load(handle)
     else: 
         print("Please train your model before running test ...")
-
-
+    return dict_labels
 
 def clean_tweet(texte):
     texte=re.sub(r'&gt;|&amp;|"','',texte)

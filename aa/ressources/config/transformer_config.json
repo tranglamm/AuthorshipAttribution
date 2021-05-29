@@ -1,0 +1,6 @@
+{
+    "loss": "CrossEntropy", 
+    "optimizer": "Adam", 
+    "lr" : 1e-5,
+    "epochs": 5
+}

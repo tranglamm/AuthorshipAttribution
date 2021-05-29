@@ -11,22 +11,25 @@ import sys
 from pickle import LIST
 
 from numpy.lib.npyio import load
+from tensorflow.python.keras.preprocessing.text import text_to_word_sequence
 #import fasttext.util
 #from fasttext import FastText
 from .utils import *
 from .preprocessing_utils import *
 from .preprocessing_utils import *
+from .file_utils import *
 #from .config_utils import TrainConfig, EmbConfig
 import numpy as np
 import io
 import pandas as pd
-
+from .file_utils import CONFIG_JSON
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.preprocessing.text import Tokenizer
 #Tokenizer: a sentence with a list of string (tokens), split of string 
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.utils import to_categorical
+import torch 
 
 from gensim.models import Word2Vec
 from gensim.models import KeyedVectors
@@ -35,21 +38,45 @@ import shutil
 import json
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 from sklearn.preprocessing import LabelEncoder
-
 import logging
-logging.basicConfig(level=logging.DEBUG)
+from transformers import AutoTokenizer, AutoModel, AutoConfig, pipeline
+from torch.utils.data import Dataset, DataLoader
 
+config_dir = CONFIG_DIR
 
 class PrepareData():
     def __init__(self,**kwargs):
         self.texts = kwargs.get("texts",None)
         self.labels = kwargs.get("labels",None)
+        self.max_length = kwargs.get("max_length",None)
 
+    @classmethod
+    def for_transformer(cls,params) -> "PrepareData":
+        model_name="/".join(params.model.split("/")[1:])
+        config = AutoConfig.from_pretrained(model_name)
+        config.max_position_embeddings=params.max_length if params.max_length and params.max_length <= config.max_position_embeddings else config.max_position_embeddings
+        
+        texts,labels=read_csv_file(params.train_data,params.sep)
+        
+
+        #If labels is not integer
+        if not all(isinstance(x, int) for x in labels):
+            label_encoder = LabelEncoder()
+            labels_encoded = label_encoder.fit_transform(np.array(labels))
+
+        config.num_labels=len(set(labels))
+        config.save_pretrained(config_dir)
+        
+        data = dict(texts=texts,labels=labels_encoded,max_length=config.max_position_embeddings)
+        save_dict_labels(labels_encoded,labels)
+        return cls(**data)
 
     @classmethod
     def for_training(cls, params) -> "PrepareData":
         logging.info('Prepare data for Training...')
         logging.info(f'Loading {params.train_data} file...')
+        max_length=params.max_length if params.max_length else 50
+        update_model_config({"max_length":max_length})
         texts,labels=read_csv_file(params.train_data,params.sep)
         
 
@@ -60,7 +87,7 @@ class PrepareData():
 
         update_model_config({"num_classes":len(set(labels))})
         save_dict_labels(labels_encoded,labels)
-        training_data = {"texts":texts,"labels":labels_encoded} 
+        training_data = dict(texts=texts,labels=labels_encoded,max_length=max_length)
         return cls(**training_data)
     
     @classmethod
@@ -75,39 +102,92 @@ class PrepareData():
             logging.info(f'Loading {params.txt_file} file...')
             with open(params.txt_file,"r",encoding="utf-8") as f: 
                 texts=[l.strip('\n') for l in f.readlines()]
-                predict_data={"texts":texts}
+                predict_data=dict(texts=texts)
         elif params.csv_file:
-            pass
+            df=pd.read_csv(params.csv_file,sep='\t',header=None)
+            texts=df[df.columns[1]].to_list()
+            labels=df[df.columns[0]].to_list()
+            predict_data = dict(texts=texts,labels=labels)
+
         elif params.sentence: 
             pass 
         else: 
             raise Exception("No Data provided for prediction. Use one of three arguments : --txt_file --csv_file or --sentence")
         
         return cls(**predict_data)
-        
-    @staticmethod
-    def transform_labels(y_train, y_val):
-        labels= y_train + y_val
-        labels_encoded = np.array(labels)
-        label_encoder = LabelEncoder()
-        label_encoder.fit(labels)
-        Y_train = label_encoder.transform(y_train)
-        Y_val = label_encoder.transform(y_val)
-        return Y_train, Y_val
 
-    
-    def get_train_data(self):
-        train_data=[self.x_train,self.y_train]
-        return train_data
 
-    def get_val_data(self):
-        val_data=[self.x_val,self.y_val]
-        return val_data
+class CustomTransformerData(Dataset):
+    def __init__(self,tokenizer,texts, labels, max_length):
+        self.tokenizer = tokenizer
+        self.texts = texts
+        self.targets = labels
+        self.max_len = max_length
 
-    def test(self):
-        predict_data=[self.x_test,self.y_test]
-        return predict_data
-    
+    def __len__(self):
+        return len(self.texts)
+
+    def __getitem__(self, index):
+        text = str(self.texts[index])
+        text = " ".join(text.split())
+
+        inputs = self.tokenizer(text,
+                                max_length=self.max_len,
+                                padding='max_length',
+                                truncation=True)
+        ids = inputs['input_ids']
+        mask = inputs['attention_mask']
+        token_type_ids = inputs["token_type_ids"]
+
+
+        return {
+            'input_ids': torch.tensor(ids, dtype=torch.long),
+            'attention_mask': torch.tensor(mask, dtype=torch.long),
+            'token_type_ids': torch.tensor(token_type_ids, dtype=torch.long),
+            'labels': torch.tensor(self.targets[index], dtype=torch.float)
+        }
+
+
+class TransformerPreprocessing():
+    TRAIN_BATCH_SIZE=4
+    VALID_BATCH_SIZE=1
+    train_params = {'batch_size': TRAIN_BATCH_SIZE,
+                    'shuffle': True,
+                    'num_workers': 0
+                    }
+    valid_params = {'batch_size': VALID_BATCH_SIZE,
+                    'shuffle': True,
+                    'num_workers': 0
+                    }
+    test_params = {'batch_size': VALID_BATCH_SIZE,
+                    'shuffle': True,
+                    'num_workers': 0
+                    }
+
+    def __init__(self,params):
+        data = PrepareData.for_transformer(params)
+        self.texts = data.texts
+        self.labels = data.labels
+        self.max_length = data.max_length
+        pretrained_model_name = "/".join(params.model.split("/")[1:])
+        self.tokenizer =AutoTokenizer.from_pretrained(pretrained_model_name)
+
+    def get_training_set(self):
+        x_train, x_val, y_train, y_val=split_data(self.texts,self.labels)
+        training_set = CustomTransformerData(self.tokenizer,x_train,y_train, self.max_length)
+        validation_set = CustomTransformerData(self.tokenizer,x_val,y_val, self.max_length)
+        training_loader = DataLoader(training_set, **self.train_params)
+        validation_loader = DataLoader(validation_set, **self.valid_params)
+        return training_loader, validation_loader
+
+    def get_testing_set(self):
+        """
+        TODO: 
+        """
+        testing_set = CustomTransformerData(self.tokenizer,self.texts,self.labels, self.max_length)
+        testing_loader = DataLoader(testing_set, **self.test_params)
+        return testing_loader
+
 class Preprocessing():
     def __init__(self, **kwargs):
         self.x_train = kwargs.get("x_train",None)
@@ -117,8 +197,9 @@ class Preprocessing():
         self.x_predict = kwargs.get("x_predict",None)
         self.y_predict = kwargs.get("y_predict",None)
         self.tokenizer = kwargs.get("tokenizer",None)
-        
 
+        
+    
     @classmethod
     def for_training(cls,data) -> "Preprocessing":
         tokenizer= Tokenizer(filters='', lower=False)
@@ -134,10 +215,31 @@ class Preprocessing():
 
     @classmethod
     def for_prediction(cls,data):
-        data = data.texts
+        texts = data.texts
+        labels = data.labels
+        print(labels)
+        word_index=load_word_index() 
+        x_predict=np.array([cls.text_to_sequence(text) for text in texts])
+        config=load_json('aa/ressources/config/model_config.json')
+        x_predict = pad_sequences(x_predict, padding='post', maxlen=config['max_length'])
+
+        labelsEncoded_labels=load_dict_labels()
+        print(labelsEncoded_labels)
+        #Index out of label 
+        idx_ool= len(labelsEncoded_labels) + 1
+        labels_labelsEncoded={v:k for k,v in labelsEncoded_labels.items()}
+        y_predict=[labels_labelsEncoded.get(label) if label in labels_labelsEncoded else idx_ool for label in labels]
+        y_predict = cls.convert_label(list(labelsEncoded_labels.keys()),y_predict)
+        predict_data={"x_predict":x_predict,"y_predict":y_predict}
+        return cls(**predict_data) 
+
+    """
+    @classmethod
+    def for_prediction_bis(cls,data):
+        texts = data.texts
         word_index=load_word_index() 
         sentences=[]       
-        for d in data: 
+        for d in texts: 
           sentence=[]
           words=d.split()
           for word in words: 
@@ -151,7 +253,7 @@ class Preprocessing():
         x_predict = pad_sequences(x_predict, padding='post', maxlen=config['max_length'])
         predict_data={"x_predict":x_predict}
         return cls(**predict_data) 
-
+    """
     
     def get_vocab(self):
         """
@@ -165,7 +267,17 @@ class Preprocessing():
         vocab_size = len(self.tokenizer.word_index) + 1
         update_model_config({"vocab_size":vocab_size})
         return vocab_size
-    
+
+
+    @staticmethod
+    def encode_transformer_data(tokenizer, texts, max_length): 
+        input_ids,attention_mask=[],[]
+        for text in texts:
+            inputs = tokenizer(text,padding="max_length",max_length=max_length,return_tensors='pt', truncation = True)
+            input_ids.append(inputs.input_ids)
+            attention_mask.append(inputs.attention_mask)
+        return torch.stack(input_ids),torch.stack(attention_mask)
+
     @staticmethod
     def convert_data(tokenizer,x:List):
         """
@@ -180,9 +292,15 @@ class Preprocessing():
         return x 
 
     @staticmethod
-    def convert_label(labels,y:List):
+    def convert_label(labels:List,y:List):
         y = to_categorical(y,num_classes=len(set(labels)))
         return y 
+    
+    @staticmethod
+    def text_to_sequence(text:List):
+        word_index=load_word_index()
+        sequence=[word_index.get(word) if word in word_index else 0 for word in text.split()]
+        return np.array(sequence)
 
     def prepare_custom_embedding(self,emb_config):
         logging.info("Create Embedding Matrix")
@@ -235,23 +353,8 @@ class Preprocessing():
         training_data=[x_train,y_train]
         validation_data = [x_val,y_val]
         return training_data,validation_data
-    """
-    def prepare_bin_embedding(self,file_name):
-        #Get vocab= word_index
-        word_index=self.get_vocab()
-        #Get dimension of FastText embedding 
-        embedding_dim=300
-        #Get size of vocab == word_index
-        vocab_size=self.get_vocab_size()
-        #Initialize embedding_matrix 
-        embedding_matrix = np.zeros((vocab_size, embedding_dim))
-        for word,idx in word_index.items():
-            try: 
-                embedding_matrix[idx] = ft.get_word_vector(word)
-            except: 
-                pass
-        return embedding_matrix
-    """
+    
+    
 
     
 

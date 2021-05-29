@@ -2,8 +2,8 @@ import re
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import optimizers
 from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import *
 from tensorflow.keras.layers import Embedding,Dense,Dropout, Flatten, Input, Concatenate
 from tensorflow.keras.layers import Conv2D, Conv2DTranspose, MaxPooling2D,  Embedding, Reshape
 
@@ -49,10 +49,10 @@ class CNN:
 		# this creates a model that includes
         model = Model(inputs=inputs, outputs=output)
         model.summary()
-
+        
         opt = optimizers.Adam(lr=self.config.lr)
         model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
-        
+
         return model, deconv_model
 	
 if __name__=="__main__":
