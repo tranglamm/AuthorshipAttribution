@@ -1,3 +1,7 @@
+"""
+@author Trang Lam - github.com/tranglamm
+
+"""
 from aa.config_utils import TrainingConfig
 from tensorflow.python.autograph.pyct import transformer
 from aa.models.transformer_classification import CombineCnn, Transformers
@@ -52,10 +56,10 @@ def get_parser():
 
     parser.add_argument("--custom_emb", type=str, default="w2v",
                         help="You can choose between w2v or ft to train your own embeddings")
-    """
+    
     parser.add_argument("--val_data", type=str, default="",
                         help="Path of validation file CSV. If not specified, we will split training data into train_data and val_data")
-
+    """
     parser.add_argument("--model_config", type=str, default="aa/config/model_config.json",
                         help="Path of file training_config.json")       
 

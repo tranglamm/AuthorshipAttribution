@@ -20,6 +20,8 @@ model_config_json = CONFIG_JSON["model_config"]
 
 def read_csv_file(data_path,sep,clean_text:bool=False):
     r"""
+    TODO: 
+    can take into account a csv like column 0 : Text and column 1: Label
     Input :
         data_path = Path of csv file 
         CSV file has to be represented as : LABELS Columns, TEXT Columns - by default sep="\t" 

@@ -1,4 +1,6 @@
 """
+@author Trang Lam - github.com/tranglamm
+
 Evaluate a csv file => 
     Matrix Confusion 
     CSV file : true_target predict_target prediction_score 
@@ -72,7 +74,7 @@ def draw_confusion_matrix(y_predict,Y_predict):
     sn.heatmap(df_cm, annot=True,fmt=".2f", annot_kws={"size": 14}) # font size
     plt.show()
 
-def colorize(words,deconv_values,prediction):
+def colorizeWords(words,deconv_values,prediction):
 
 
     #word_cmap = matplotlib.cm.PiYG
@@ -88,6 +90,31 @@ def colorize(words,deconv_values,prediction):
         colored_string += template.format(color, word)
     color="#B5B3D5"
     colored_string += template.format(color, "    Label: {} |".format(np.argmax(prediction)))
+    
+    prob = np.amax(prediction)
+    #color = matplotlib.colors.rgb2hex(prob_cmap(prob)[:3])
+    
+    colored_string += template.format(color, "{:.2f}%".format(prob*100)) + '|'
+    
+    return colored_string
+
+def colorize(words,label,deconv_values,prediction):
+
+
+    #word_cmap = matplotlib.cm.PiYG
+    #word_cmap = matplotlib.cm.BuPu
+    word_cmap = matplotlib.cm.GnBu
+    #prob_cmap = matplotlib.cm.Pastel
+    #template = '<span class="barcode"; style="color: black; background-color: {}">{} </span>'
+    template = '<span class="barcode"; style="color: {}">{} </span>'
+    colored_string = ''
+    # Use a matplotlib normalizer in order to make clearer the difference between values
+    normalized_and_mapped = matplotlib.cm.ScalarMappable(cmap=word_cmap).to_rgba(deconv_values)
+    for word, color in zip(words, normalized_and_mapped):
+        color = matplotlib.colors.rgb2hex(color[:3])
+        colored_string += template.format(color, word)
+    color="#B5B3D5"
+    colored_string += template.format(color, " True Label: {}    Predict Label: {} |".format(label,np.argmax(prediction)))
     
     prob = np.amax(prediction)
     #color = matplotlib.colors.rgb2hex(prob_cmap(prob)[:3])
@@ -131,19 +158,13 @@ def get_parser():
     parser = argparse.ArgumentParser(description="Training model")
     requiredNamed = parser.add_argument_group('required named arguments')
     
-    parser.add_argument("--file_vec", type=str, default="",
-                        help="Path of your Word Embeddings that can be found in aa/pretrained_emb directory")
+    #parser.add_argument("--file_vec", type=str, default="",
+    #                    help="Path of your Word Embeddings that can be found in aa/pretrained_emb directory")
 
     requiredNamed.add_argument("--model", type=str, default="",required=True,
                         help="Path of your model that can be found in trained_models/--output_file dir")
 
-    parser.add_argument("--sentence", type=str, default="",
-                        help="Sentence to predict")
-
-    parser.add_argument("--txt_file", type=str, default="",
-                        help="Path of txt file")
-
-    parser.add_argument("--csv_file", type=str, default="",
+    requiredNamed.add_argument("--csv_file", type=str, default="", required=True,
                         help="Path of csv file")
     
     parser.add_argument("--output_csv", type=str, default="",
@@ -157,26 +178,28 @@ def get_parser():
     return parser 
 
 def main(params):
-    data = PrepareData.for_prediction(params)
-    preprocessing=Preprocessing.for_prediction(data)
-    x_predict = preprocessing.x_predict
-    y_predict = preprocessing.y_predict
-    print("Total of predict data: ",len(x_predict))
+    data = PrepareData.for_evaluation(params)
+    preprocessing=Preprocessing.for_evaluation(data)
+    x_val = preprocessing.x_val
+    y_val = preprocessing.y_val
+    print("True labels: ",y_val)
+    print("Total of predict data: ",len(x_val))
     model = load_model(params.model)
-    predictions = model.predict(x_predict)
-    Y_predict=np.argmax(predictions,axis=1)
-    print(Y_predict)
+    predictions = model.predict(x_val)
+    Y_val=np.argmax(predictions,axis=1)
+    print("Predicted Labels: ",Y_val)
     print("----------------------------")
-    loss, accuracy = model.evaluate(x_predict, y_predict, verbose=False)
+    loss, accuracy = model.evaluate(x_val, y_val, verbose=False)
     print("Testing Accuracy:  {:.4f}".format(accuracy))
     print("----------------------------")
-    print(np.argmax(y_predict,axis=1))
-    report = classification_report(np.argmax(y_predict,axis=1),Y_predict)
+    print(np.argmax(y_val,axis=1))
+    report = classification_report(np.argmax(y_val,axis=1),Y_val)
     print(report)
-    draw_confusion_matrix(np.argmax(y_predict,axis=1),Y_predict)
+    draw_confusion_matrix(np.argmax(y_val,axis=1),Y_val)
     
     if params.output_csv: 
         """
+        TODO: Review
         Output a csv file consits of: 
             Text, True Label, Predict Label, Predictions Score 
         """
@@ -185,7 +208,7 @@ def main(params):
             os.makedirs(results_dir)
         output_data={"texts":data.texts,
                     "true_labels":data.labels,
-                    "predicted_labels": Y_predict,
+                    "predicted_labels": Y_val,
                     "predictions_score": predictions
                     }
         df = pd.DataFrame(output_data)
@@ -208,7 +231,7 @@ def main(params):
         deconv_bias = deconv_model.layers[-1].get_weights()[1]
         deconv_model.layers[-1].set_weights([deconv_weights, deconv_bias])
         
-        deconv = deconv_model.predict(x_predict)
+        deconv = deconv_model.predict(x_val)
         print("DECONVOLUTION SHAPE : ", deconv.shape)
         
         result = []
@@ -220,7 +243,7 @@ def main(params):
             sentence["sentence"]= [(word,float(np.sum(deconv_value))) for word,deconv_value in zip(words,deconv_values)]
             result.append(sentence)
             deconv_values = [float(np.sum(deconv_value)) for deconv_value in deconv_values]
-            colored_string=colorize(words,deconv_values,prediction)
+            colored_string=colorize(words,label,deconv_values,prediction)
             print(colored_string)
             display(HTML(colored_string))
             
@@ -234,7 +257,7 @@ def main(params):
 
     if params.attention: 
         attention_model = load_model(params.model + ".attention")
-        atn_scores= attention_model.predict(x_predict)
+        atn_scores= attention_model.predict(x_val)
         for text, attention_scores, prediction in zip(data.texts,atn_scores,predictions):
             words=text.split()
             attention_scores=[float(atn_score) for atn_score in attention_scores]

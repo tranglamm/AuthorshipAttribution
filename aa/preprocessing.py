@@ -11,6 +11,8 @@ import sys
 from pickle import LIST
 
 from numpy.lib.npyio import load
+from pandas.core.frame import DataFrame
+from scipy.sparse import data
 from tensorflow.python.keras.preprocessing.text import text_to_word_sequence
 #import fasttext.util
 #from fasttext import FastText
@@ -43,7 +45,8 @@ from transformers import AutoTokenizer, AutoModel, AutoConfig, pipeline
 from torch.utils.data import Dataset, DataLoader
 
 config_dir = CONFIG_DIR
-
+###----PREPARE DATA -----###
+#For CNN and Attention (KERAS)
 class PrepareData():
     def __init__(self,**kwargs):
         self.texts = kwargs.get("texts",None)
@@ -89,13 +92,13 @@ class PrepareData():
         save_dict_labels(labels_encoded,labels)
         training_data = dict(texts=texts,labels=labels_encoded,max_length=max_length)
         return cls(**training_data)
-    
+
     @classmethod
     def for_prediction(cls,params) -> "PrepareData":
         """
         TODO: Predict can accept 
             only one sentence 
-            csv_file and txt_file(done) 
+            csv_file and txt_file(done) without labels 
         """
         logging.info('Prepare data for Prediction...')
         if params.txt_file:
@@ -106,17 +109,39 @@ class PrepareData():
         elif params.csv_file:
             df=pd.read_csv(params.csv_file,sep='\t',header=None)
             texts=df[df.columns[1]].to_list()
-            labels=df[df.columns[0]].to_list()
-            predict_data = dict(texts=texts,labels=labels)
+            #labels=df[df.columns[0]].to_list()
+            predict_data = dict(texts=texts)
 
         elif params.sentence: 
-            pass 
+            predict_data=dict(texts=[params.sentence]) 
         else: 
             raise Exception("No Data provided for prediction. Use one of three arguments : --txt_file --csv_file or --sentence")
         
         return cls(**predict_data)
 
+    @classmethod
+    def for_evaluation(cls,params) -> "PrepareData":
+        """
+        Accept a csv file consists of 2 columns LABEL, Texts
+        """
+        logging.info('Prepare data for Evaluation...')
+        if params.csv_file:
+            df=pd.read_csv(params.csv_file,sep='\t',header=None)
+            texts=df[df.columns[1]].to_list()
+            labels=df[df.columns[0]].to_list()
+            evaluation_data = dict(texts=texts,labels=labels)
+        
+        return cls(**evaluation_data)
+        """
+        if params.txt_file:
+            logging.info(f'Loading {params.txt_file} file...')
+            with open(params.txt_file,"r",encoding="utf-8") as f: 
+                texts=[l.strip('\n') for l in f.readlines()]
+                evaluation_data=dict(texts=texts)
+        """
+        
 
+# For Transformer (PyTorch)
 class CustomTransformerData(Dataset):
     def __init__(self,tokenizer,texts, labels, max_length):
         self.tokenizer = tokenizer
@@ -148,6 +173,9 @@ class CustomTransformerData(Dataset):
         }
 
 
+
+####----- Preprocessing -----####
+#For Transformer (PyTorch)
 class TransformerPreprocessing():
     TRAIN_BATCH_SIZE=4
     VALID_BATCH_SIZE=1
@@ -188,6 +216,8 @@ class TransformerPreprocessing():
         testing_loader = DataLoader(testing_set, **self.test_params)
         return testing_loader
 
+
+#For CNN and Attention (KERAS)
 class Preprocessing():
     def __init__(self, **kwargs):
         self.x_train = kwargs.get("x_train",None)
@@ -206,32 +236,55 @@ class Preprocessing():
         tokenizer.fit_on_texts(data.texts)
         logging.info(f'Split 10% training data for validation')
         x_train, x_val, y_train, y_val=split_data(data.texts,data.labels)
+        df_validation = pd.DataFrame(list(zip(y_val,x_val)))
+        df_validation.to_csv(os.path.join(DATA_DIR,"validation_data.csv"),header=None,index=False,encoding="utf-8",sep='\t')
         x_train = cls.convert_data(tokenizer, x_train)
         x_val = cls.convert_data(tokenizer, x_val)
         y_train = cls.convert_label(data.labels,y_train)
         y_val = cls.convert_label(data.labels,y_val)
         training_data = {"x_train":x_train,"y_train":y_train,"x_val":x_val,"y_val":y_val,"tokenizer":tokenizer}
         return cls(**training_data)
-
     @classmethod
     def for_prediction(cls,data):
+        """ 
+        Accept a txt file without labels or a single sentence 
+        """
         texts = data.texts
-        labels = data.labels
-        print(labels)
         word_index=load_word_index() 
         x_predict=np.array([cls.text_to_sequence(text) for text in texts])
         config=load_json('aa/ressources/config/model_config.json')
         x_predict = pad_sequences(x_predict, padding='post', maxlen=config['max_length'])
-
-        labelsEncoded_labels=load_dict_labels()
-        print(labelsEncoded_labels)
-        #Index out of label 
-        idx_ool= len(labelsEncoded_labels) + 1
-        labels_labelsEncoded={v:k for k,v in labelsEncoded_labels.items()}
-        y_predict=[labels_labelsEncoded.get(label) if label in labels_labelsEncoded else idx_ool for label in labels]
-        y_predict = cls.convert_label(list(labelsEncoded_labels.keys()),y_predict)
-        predict_data={"x_predict":x_predict,"y_predict":y_predict}
+        predict_data={"x_predict":x_predict}
         return cls(**predict_data) 
+
+    @classmethod
+    def for_evaluation(cls,data):
+        texts = data.texts
+        labels = data.labels
+        print(labels)
+        if not all(isinstance(x, int) for x in labels):
+            y_val=[]
+            labelsEncoded_labels=load_dict_labels()
+            print(labelsEncoded_labels)
+            #Index out of label 
+            idx_ool= len(labelsEncoded_labels) + 1
+            labels_labelsEncoded={v:k for k,v in labelsEncoded_labels.items()}
+            for label in labels: 
+                if label in labels_labelsEncoded:
+                    y_val.append(labels_labelsEncoded.get(label))
+                else: 
+                    raise Exception(f'Your label {label} not found in labels of Training Data. If you want to predict these sentences => call PREDICT rather than EVALUATE')
+            #y_val=[labels_labelsEncoded.get(label) if label in labels_labelsEncoded else idx_ool for label in labels]
+        else: 
+            y_val=labels
+
+        word_index=load_word_index() 
+        x_val=np.array([cls.text_to_sequence(text) for text in texts])
+        config=load_json('aa/ressources/config/model_config.json')
+        x_val = pad_sequences(x_val, padding='post', maxlen=config['max_length'])
+        y_val = cls.convert_label(list(labelsEncoded_labels.keys()),y_val)
+        evaluation_data={"x_predict":x_val,"y_predict":y_val}
+        return cls(**evaluation_data) 
 
     """
     @classmethod
