@@ -34,8 +34,8 @@ def load_pretrained_embeddings(params=None):
       "Due to the dimension of pretrained embeddings FastText is set to 300.\
       => The emb_dim of your model will also set to 300. If you want to reduce dimension, please add --reduce_dim (It can take a lot of time) "
     )
-    update_emb_config({"vector_size":300})
-    update_model_config({"emb_dim":300})
+    update_emb_config(vector_size=300)
+    update_model_config(emb_dim=300)
     lang=params.lg
 
     #pretrained_dir= the directory which stores fasttext embeddings = pretrained_emb
@@ -55,8 +55,8 @@ def load_pretrained_embeddings(params=None):
 
     #If --reduce_dim is called => update vector_size + emb_dim for model_config.json and emb_config.json
     if params.reduce_dim != 300: 
-        update_emb_config({"vector_size":params.reduce_dim})
-        update_model_config({"emb_dim":params.reduce_dim})
+        update_emb_config(vector_size=params.reduce_dim)
+        update_model_config(emb_dim=params.reduce_dim)
         ft = fasttext.load_model(path)
         fasttext.util.reduce_model(ft, params.reduce_dim)
         file_name="cc.%s.%s.%s" % (lang,params.reduce_dim,format_vec)

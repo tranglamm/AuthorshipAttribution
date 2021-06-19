@@ -76,9 +76,8 @@ class EmbConfig(Config):
         super().__init__(**kwargs)
         
 
-"""
+
 class TrainingConfig(Config): 
     def __init__(self,
                 **kwargs):
         super().__init__(**kwargs)
-"""

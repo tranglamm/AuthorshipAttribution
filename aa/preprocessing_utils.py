@@ -12,6 +12,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split 
 import pickle 
 import json
+import joblib
 from .utils import *
 from .file_utils import *
 
@@ -20,6 +21,8 @@ model_config_json = CONFIG_JSON["model_config"]
 
 def read_csv_file(data_path,sep,clean_text:bool=False):
     r"""
+    TODO: 
+    can take into account a csv like column 0 : Text and column 1: Label
     Input :
         data_path = Path of csv file 
         CSV file has to be represented as : LABELS Columns, TEXT Columns - by default sep="\t" 
@@ -65,26 +68,27 @@ def split_sent(texts, labels):
     return new_texts, new_labels
 
 
-
-def save_word_index(word_index):
-    path = os.path.join(ressources_dir,"word_index.pickle")
+def save_word_index(word_index, file_word_index):
+    #path = os.path.join(ressources_dir,"word_index.pickle")
+    path = os.path.join(ressources_dir,file_word_index)
     with open(path, 'wb') as handle:
         pickle.dump(word_index, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-def load_word_index():
-    path = os.path.join(ressources_dir,"word_index.pickle")
+def load_word_index(file_word_index):
+    #path = os.path.join(ressources_dir,"word_index.pickle")
+    path = os.path.join(ressources_dir,file_word_index)
     with open(path, 'rb') as handle:
         word_index = pickle.load(handle)
     return word_index
 
-def save_dict_labels(labels_encoded,labels):
+def save_dict_labels(labels_encoded,labels,file_dict_labels):
     dict_labels=dict(zip(labels_encoded, labels))
-    path = os.path.join(ressources_dir,"dict_labels.pickle")
+    path = os.path.join(ressources_dir,file_dict_labels)
     with open(path, 'wb') as handle:
         pickle.dump(dict_labels, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-def load_dict_labels():
-    path = os.path.join(ressources_dir,"dict_labels.pickle")
+def load_dict_labels(file_dict_labels):
+    path = os.path.join(ressources_dir,file_dict_labels)
     if Path(path).exists():
         with open(path, 'rb') as handle:
             dict_labels = pickle.load(handle)
@@ -122,4 +126,5 @@ def split_data(texts,labels):
     #x_train, x_val, y_train, y_val = train_test_split(texts,labels, test_size=0.1,random_state=42)
     #X=[x_train, x_val]
     #Y=[y_train, y_val]
-    return train_test_split(texts,labels, test_size=0.1,random_state=42)
+    #return train_test_split(texts,labels, test_size=0.1,random_state=42)
+    return train_test_split(texts,labels, test_size=0.1)
