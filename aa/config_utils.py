@@ -1,3 +1,7 @@
+"""
+@author Trang Lam - github.com/tranglamm
+
+"""
 import json 
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 import os

@@ -130,5 +130,12 @@ dmypy.json
 
 aa/ressources/pretrained_emb
 aa/output_models
+aa/embedder.py
+aa/preprocessing.py
+aa/models
+.evaluate.py
+.predict.py
+.sentence_similarity.py
+.topicmodeling.py
 .vscode
 .DS_Store
