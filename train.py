@@ -81,7 +81,7 @@ def main(params):
         x_train, y_train = preprocessing.x_train, preprocessing.y_train
         x_val, y_val = preprocessing.x_val, preprocessing.y_val
         print(preprocessing.get_vocab_size())
-        print(preprocessing.get_vocab())
+        print(preprocessing.get_vocab(data))
         print(x_train.shape)
         print(x_val.shape)
 
@@ -92,7 +92,7 @@ def main(params):
         #if have params lg => load pretrained embedding from FastText 
         if params.lg: 
             load_pretrained_embeddings(params)
-            embedding_matrix=preprocessing.prepare_txt_embedding(params.lg,emb_config)
+            embedding_matrix=preprocessing.prepare_txt_embedding(data,params.lg,emb_config)
 
         elif params.custom_emb: 
             if params.custom_emb=="w2v":
@@ -101,7 +101,7 @@ def main(params):
                 custom_ft_embeddings(data.texts,emb_config)
             else: 
                 print("You have to choose between w2v or ft")
-            embedding_matrix=preprocessing.prepare_custom_embedding(emb_config)
+            embedding_matrix=preprocessing.prepare_custom_embedding(data,emb_config)
 
         #Assert emb_dim in model_config.json == emb_config.json 
         if model_config.emb_dim != emb_config.vector_size:

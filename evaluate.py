@@ -57,7 +57,7 @@ def sequence_to_text(sequence):
         words.append(word)
     return words
 
-def draw_confusion_matrix(y_predict,Y_predict):
+def draw_confusion_matrix(data,y_predict,Y_predict):
     """
     y_predict : true labels
     Y_predict : labels predicted by model
@@ -65,7 +65,7 @@ def draw_confusion_matrix(y_predict,Y_predict):
     matrix = confusion_matrix(y_predict, Y_predict)
     matrix = matrix.astype('float') / matrix.sum(axis=1)[:, np.newaxis]
     fmt = "%.2f"
-    labelsEncoded_labels =load_dict_labels()
+    labelsEncoded_labels =load_dict_labels(data.file_dict_labels)
     df_cm = pd.DataFrame(matrix, columns=list(labelsEncoded_labels.values()), index = list(labelsEncoded_labels.values()))
     df_cm.index.name = 'Vraies classes'
     df_cm.columns.name = 'Classes prédites'
@@ -98,12 +98,13 @@ def colorizeWords(words,deconv_values,prediction):
     
     return colored_string
 
-def colorize(words,label,deconv_values,prediction):
+def colorize_bis(words,label,deconv_values,prediction,labelsEncoded_labels):
 
 
     #word_cmap = matplotlib.cm.PiYG
     #word_cmap = matplotlib.cm.BuPu
-    word_cmap = matplotlib.cm.GnBu
+    #word_cmap = matplotlib.cm.GnBu
+    word_cmap = matplotlib.cm.Blues
     #prob_cmap = matplotlib.cm.Pastel
     #template = '<span class="barcode"; style="color: black; background-color: {}">{} </span>'
     template = '<span class="barcode"; style="color: {}">{} </span>'
@@ -114,37 +115,96 @@ def colorize(words,label,deconv_values,prediction):
         color = matplotlib.colors.rgb2hex(color[:3])
         colored_string += template.format(color, word)
     color="#B5B3D5"
-    colored_string += template.format(color, " True Label: {}    Predict Label: {} |".format(label,np.argmax(prediction)))
-    
+    colored_string += template.format(color, " True Label: {}    Predict Label: {} |".format(label,labelsEncoded_labels.get(np.argmax(prediction))))
     prob = np.amax(prediction)
     #color = matplotlib.colors.rgb2hex(prob_cmap(prob)[:3])
     
-    colored_string += template.format(color, "{:.2f}%".format(prob*100)) + '|'
+    colored_string += template.format(color, "{:.2f}%".format(prob*100)) + '|<br>'
     
     return colored_string
 
-def colorizeAttention(words,attention_scores,prediction):
+def colorize(words,label,deconv_values,prediction,labelsEncoded_labels):
 
 
     #word_cmap = matplotlib.cm.PiYG
     #word_cmap = matplotlib.cm.BuPu
-    word_cmap = matplotlib.cm.BuPu
+    #word_cmap = matplotlib.cm.GnBu
+    word_cmap = matplotlib.cm.Blues
     #prob_cmap = matplotlib.cm.Pastel
-    template = '<span class="barcode"; style="color: black; background-color: {}">{} </span>'
+    #template = '<span class="barcode"; style="color: black; background-color: {}">{} </span>'
+    template = '<span class="barcode"; style="color: {}">{} </span>'
+    colored_string = ''
+    # Use a matplotlib normalizer in order to make clearer the difference between values
+    normalized_and_mapped = matplotlib.cm.ScalarMappable(cmap=word_cmap).to_rgba(deconv_values)
+    for word, color in zip(words, normalized_and_mapped):
+        color = matplotlib.colors.rgb2hex(color[:3])
+        colored_string += template.format(color, word)
+    prob = np.amax(prediction)
+    color_prob= "#611E75"
+    color_true_label="#2C751E"
+    color_predict_label="#CB3616"
+    true_label = labelsEncoded_labels.get(label)
+    predict_label = labelsEncoded_labels.get(np.argmax(prediction))
+    if true_label == predict_label: 
+      colored_string += template.format(color_true_label, " True Label: {}    Predict Label: {} |".format(true_label,predict_label))
+      colored_string += template.format(color_prob, "{:.2f}%".format(prob*100)) + '|<br>'
+    else:
+      colored_string += template.format(color_true_label, " True Label: {}  |".format(true_label))
+      colored_string += template.format(color_predict_label, " Predict Label: {}  |".format(predict_label))
+      colored_string += template.format(color_prob, "{:.2f}%".format(prob*100)) + '|<br>'
+    return colored_string
+
+def colorizeAttention(words,label,attention_scores,prediction,labelsEncoded_labels):
+
+
+    #word_cmap = matplotlib.cm.PiYG
+    #word_cmap = matplotlib.cm.BuPu
+    #word_cmap = matplotlib.cm.BuPu
+    word_cmap = matplotlib.cm.Blues
+    #prob_cmap = matplotlib.cm.Pastel
+    template = '<span class="barcode"; style="color: {}">{} </span>'
     colored_string = ''
     # Use a matplotlib normalizer in order to make clearer the difference between values
     normalized_and_mapped = matplotlib.cm.ScalarMappable(cmap=word_cmap).to_rgba(attention_scores)
-    print(normalized_and_mapped.shape)
+    for word, color in zip(words, normalized_and_mapped):
+        color = matplotlib.colors.rgb2hex(color[:3])
+        colored_string += template.format(color, word)
+    prob = np.amax(prediction)
+    color_prob= "#611E75"
+    color_true_label="#2C751E"
+    color_predict_label="#CB3616"
+    true_label = labelsEncoded_labels.get(label)
+    predict_label = labelsEncoded_labels.get(np.argmax(prediction))
+    if true_label == predict_label: 
+      colored_string += template.format(color_true_label, " True Label: {}    Predict Label: {} |".format(true_label,predict_label))
+      colored_string += template.format(color_prob, "{:.2f}%".format(prob*100)) + '|<br>'
+    else:
+      colored_string += template.format(color_true_label, " True Label: {}  |".format(true_label))
+      colored_string += template.format(color_predict_label, " Predict Label: {}  |".format(predict_label))
+      colored_string += template.format(color_prob, "{:.2f}%".format(prob*100)) + '|<br>'
+    return colored_string
+
+def colorizeAttentionbis(words,label,attention_scores,prediction,labelsEncoded_labels):
+
+
+    #word_cmap = matplotlib.cm.PiYG
+    #word_cmap = matplotlib.cm.BuPu
+    #word_cmap = matplotlib.cm.BuPu
+    word_cmap = matplotlib.cm.Blues
+    #prob_cmap = matplotlib.cm.Pastel
+    template = '<span class="barcode"; style="color: {}">{} </span>'
+    colored_string = ''
+    # Use a matplotlib normalizer in order to make clearer the difference between values
+    normalized_and_mapped = matplotlib.cm.ScalarMappable(cmap=word_cmap).to_rgba(attention_scores)
     for word, color in zip(words, normalized_and_mapped):
         color = matplotlib.colors.rgb2hex(color[:3])
         colored_string += template.format(color, word)
     color="#B5B3D5"
-    colored_string += template.format(color, "    Label: {} |".format(np.argmax(prediction)))
-    
+    colored_string += template.format(color, " True Label: {}    Predict Label: {} |".format(label,labelsEncoded_labels.get(np.argmax(prediction))))
     prob = np.amax(prediction)
     #color = matplotlib.colors.rgb2hex(prob_cmap(prob)[:3])
     
-    colored_string += template.format(color, "{:.2f}%".format(prob*100)) + '|'
+    colored_string += template.format(color, "{:.2f}%".format(prob*100)) + '|<br>'
     
     return colored_string
 
@@ -166,7 +226,13 @@ def get_parser():
 
     requiredNamed.add_argument("--csv_file", type=str, default="", required=True,
                         help="Path of csv file")
-    
+
+    requiredNamed.add_argument("--train_data", type=str, default="", required=True,
+                        help="Path of your data that you used to train this model --> to simplify the search of word_index and dict_labels")
+
+    parser.add_argument("--sep", type=str, default="\t",
+                        help="Define Separator of your csv file")
+
     parser.add_argument("--output_csv", type=str, default="",
                         help="Path of csv file")
     
@@ -180,9 +246,11 @@ def get_parser():
 def main(params):
     data = PrepareData.for_evaluation(params)
     preprocessing=Preprocessing.for_evaluation(data)
+    labelsEncoded_labels=load_dict_labels(data.file_dict_labels)
+    print(labelsEncoded_labels)
     x_val = preprocessing.x_val
     y_val = preprocessing.y_val
-    print("True labels: ",y_val)
+    #print("True labels: ",y_val)
     print("Total of predict data: ",len(x_val))
     model = load_model(params.model)
     predictions = model.predict(x_val)
@@ -195,7 +263,7 @@ def main(params):
     print(np.argmax(y_val,axis=1))
     report = classification_report(np.argmax(y_val,axis=1),Y_val)
     print(report)
-    draw_confusion_matrix(np.argmax(y_val,axis=1),Y_val)
+    #draw_confusion_matrix(np.argmax(y_val,axis=1),Y_val)
     
     if params.output_csv: 
         """
@@ -235,35 +303,38 @@ def main(params):
         print("DECONVOLUTION SHAPE : ", deconv.shape)
         
         result = []
-
-        for sequence, deconv_values, label, prediction in zip(data.texts,deconv,data.labels,predictions):
-            sentence = {}
-            sentence["prediction"] = prediction.tolist()
-            words=sequence.split()
-            sentence["sentence"]= [(word,float(np.sum(deconv_value))) for word,deconv_value in zip(words,deconv_values)]
-            result.append(sentence)
-            deconv_values = [float(np.sum(deconv_value)) for deconv_value in deconv_values]
-            colored_string=colorize(words,label,deconv_values,prediction)
-            print(colored_string)
-            display(HTML(colored_string))
+        with open(os.path.join(RESULTS_DIR,"cnn_interpretation.html"),"w+",encoding="utf-8") as f: 
+            for sequence, deconv_values, label, prediction in zip(data.texts,deconv,data.labels,predictions):
+                sentence = {}
+                sentence["prediction"] = prediction.tolist()
+                words=sequence.split()
+                sentence["sentence"]= [(word,float(np.sum(deconv_value))) for word,deconv_value in zip(words,deconv_values)]
+                result.append(sentence)
+                deconv_values = [float(np.sum(deconv_value)) for deconv_value in deconv_values]
+                colored_string=colorize(words,label,deconv_values,prediction,labelsEncoded_labels)
+                f.write("%s \n" % colored_string)
+            #print(colored_string)
+            #display(HTML(colored_string))
             
         print("----------------------------")
         results_dir="aa/results"
         if not os.path.exists(results_dir):
             os.makedirs(results_dir)
-        result_path = os.path.join(results_dir, params.txt_file.split('/')[-1] + ".res")
+        result_path = os.path.join(results_dir, params.csv_file.split('/')[-1] + ".res")
         with open(result_path, "w", encoding='utf-8') as f:
             f.write(json.dumps(result,cls=NumpyEncoder,ensure_ascii=False,indent=2))
 
     if params.attention: 
         attention_model = load_model(params.model + ".attention")
         atn_scores= attention_model.predict(x_val)
-        for text, attention_scores, prediction in zip(data.texts,atn_scores,predictions):
-            words=text.split()
-            attention_scores=[float(atn_score) for atn_score in attention_scores]
-            print(attention_scores)
-            colored_string=colorizeAttention(words,attention_scores,prediction)
-            print(colored_string)
+        with open(os.path.join(RESULTS_DIR,"attention_interpretation.html"),"w+",encoding="utf-8") as f: 
+            for text,label, attention_scores, prediction in zip(data.texts,data.labels,atn_scores,predictions):
+                words=text.split()
+                attention_scores=[float(atn_score) for atn_score in attention_scores]
+                #print(attention_scores)
+                colored_string=colorizeAttention(words,label,attention_scores,prediction,labelsEncoded_labels)
+                f.write("%s \n" % colored_string)
+            #print(colored_string)
 
 if __name__=="__main__":
     parser=get_parser()
